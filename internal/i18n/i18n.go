@@ -5,11 +5,11 @@ package i18n
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
-	"gopkg.in/yaml.v3"
 )
 
 //go:embed locales/*.json
@@ -27,7 +27,7 @@ var (
 // Returns an error if loading fails.
 func Init(defaultLang string) error {
 	bundle = i18n.NewBundle(language.Make(defaultLang))
-	bundle.RegisterUnmarshalFunc("json", yaml.Unmarshal)
+	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 
 	entries, err := localeFS.ReadDir("locales")
 	if err != nil {

@@ -26,8 +26,8 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "modbus-sim",
-	Short: i18n.T("AppDescription", nil),
-	Long:  i18n.T("AppDescription", nil),
+	Short: "Modbus RTU/TCP Data Simulation CLI Tool",
+	Long:  "Modbus RTU/TCP Data Simulation CLI Tool",
 }
 
 // --- run command ---
@@ -36,8 +36,8 @@ var runCfgFile string
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: i18n.T("RunShort", nil),
-	Long:  i18n.T("RunLong", nil),
+	Short: "Start Modbus simulator with config file",
+	Long:  "Start the Modbus simulation server with a configuration file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load configuration from file
 		cfg, err := config.LoadFromFile(runCfgFile)
@@ -66,8 +66,8 @@ var (
 
 var quickCmd = &cobra.Command{
 	Use:   "quick",
-	Short: i18n.T("QuickShort", nil),
-	Long:  i18n.T("QuickLong", nil),
+	Short: "Quick start Modbus simulator",
+	Long:  "Quick start a Modbus simulation server with command-line flags",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := config.DefaultConfig()
 		cfg.Mode = quickMode
@@ -122,13 +122,13 @@ var versionCmd = &cobra.Command{
 func init() {
 	// run command flags
 	runCmd.Flags().StringVarP(&runCfgFile, "config", "c", "configs/example.yaml",
-		i18n.T("FlagConfigUsage", nil))
+		"Path to the configuration file")
 
 	// quick command flags
-	quickCmd.Flags().StringVarP(&quickMode, "mode", "m", "tcp", i18n.T("FlagModeUsage", nil))
-	quickCmd.Flags().StringVarP(&quickAddr, "addr", "a", ":502", i18n.T("FlagAddrUsage", nil))
-	quickCmd.Flags().StringVarP(&quickByteOrder, "byte-order", "b", "ABCD", i18n.T("FlagByteOrderUsage", nil))
-	quickCmd.Flags().IntVarP(&quickRegisters, "registers", "r", 100, i18n.T("FlagRegistersUsage", nil))
+	quickCmd.Flags().StringVarP(&quickMode, "mode", "m", "tcp", "Server mode: tcp or rtu")
+	quickCmd.Flags().StringVarP(&quickAddr, "addr", "a", ":502", "Listen address (TCP) or serial port (RTU)")
+	quickCmd.Flags().StringVarP(&quickByteOrder, "byte-order", "b", "ABCD", "Byte order: ABCD, DCBA, BADC, CDAB, BDAC")
+	quickCmd.Flags().IntVarP(&quickRegisters, "registers", "r", 100, "Number of holding registers to initialize")
 
 	// Register subcommands
 	rootCmd.AddCommand(runCmd)

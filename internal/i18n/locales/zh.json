@@ -1,82 +1,22 @@
 {
-  "AppDescription": {
-    "description": "Application description",
-    "message": "Modbus RTU/TCP 数据模拟命令行工具"
-  },
-  "ServerStarting": {
-    "description": "Server starting message",
-    "message": "服务器正在启动..."
-  },
-  "ServerStarted": {
-    "description": "Server started message",
-    "message": "服务器启动成功"
-  },
-  "ServerStopped": {
-    "description": "Server stopped message",
-    "message": "服务器已停止"
-  },
-  "ConfigLoaded": {
-    "description": "Configuration loaded message",
-    "message": "已从 {{.File}} 加载配置"
-  },
-  "ConfigLoadFailed": {
-    "description": "Configuration load failure",
-    "message": "加载配置失败: {{.Error}}"
-  },
-  "RegisterInitialized": {
-    "description": "Register initialized message",
-    "message": "已初始化 {{.Count}} 个寄存器"
-  },
-  "InvalidByteOrder": {
-    "description": "Invalid byte order error",
-    "message": "无效的字节序: {{.Order}}"
-  },
-  "QuickStartInfo": {
-    "description": "Quick start information",
-    "message": "快速启动: Modbus {{.Mode}} 服务器，地址 {{.Addr}}，{{.Registers}} 个寄存器"
-  },
-  "VersionInfo": {
-    "description": "Version information",
-    "message": "Modbus-Sim 版本 {{.Version}} (构建 {{.Commit}})"
-  },
-  "UsageTitle": {
-    "description": "Usage title",
-    "message": "用法:"
-  },
-  "RunLong": {
-    "description": "Run command long description",
-    "message": "使用配置文件启动 Modbus 模拟服务器"
-  },
-  "RunShort": {
-    "description": "Run command short description",
-    "message": "使用配置文件启动 Modbus 模拟器"
-  },
-  "QuickLong": {
-    "description": "Quick command long description",
-    "message": "通过命令行参数快速启动 Modbus 模拟服务器"
-  },
-  "QuickShort": {
-    "description": "Quick command short description",
-    "message": "快速启动 Modbus 模拟器"
-  },
-  "FlagConfigUsage": {
-    "description": "Config flag usage",
-    "message": "配置文件路径"
-  },
-  "FlagModeUsage": {
-    "description": "Mode flag usage",
-    "message": "服务器模式: tcp 或 rtu"
-  },
-  "FlagAddrUsage": {
-    "description": "Address flag usage",
-    "message": "监听地址 (TCP) 或串口 (RTU)"
-  },
-  "FlagByteOrderUsage": {
-    "description": "Byte order flag usage",
-    "message": "字节序: ABCD, DCBA, BADC, CDAB, BDAC"
-  },
-  "FlagRegistersUsage": {
-    "description": "Registers flag usage",
-    "message": "要初始化的保持寄存器数量"
-  }
+  "AppDescription": "Modbus RTU/TCP 数据模拟命令行工具",
+  "ServerStarting": "服务器正在启动...",
+  "ServerStarted": "服务器启动成功",
+  "ServerStopped": "服务器已停止",
+  "ConfigLoaded": "已从 {{.File}} 加载配置",
+  "ConfigLoadFailed": "加载配置失败: {{.Error}}",
+  "RegisterInitialized": "已初始化 {{.Count}} 个寄存器",
+  "InvalidByteOrder": "无效的字节序: {{.Order}}",
+  "QuickStartInfo": "快速启动: Modbus {{.Mode}} 服务器，地址 {{.Addr}}，{{.Registers}} 个寄存器",
+  "VersionInfo": "Modbus-Sim 版本 {{.Version}} (构建 {{.Commit}})",
+  "UsageTitle": "用法:",
+  "RunLong": "使用配置文件启动 Modbus 模拟服务器",
+  "RunShort": "使用配置文件启动 Modbus 模拟器",
+  "QuickLong": "通过命令行参数快速启动 Modbus 模拟服务器",
+  "QuickShort": "快速启动 Modbus 模拟器",
+  "FlagConfigUsage": "配置文件路径",
+  "FlagModeUsage": "服务器模式: tcp 或 rtu",
+  "FlagAddrUsage": "监听地址 (TCP) 或串口 (RTU)",
+  "FlagByteOrderUsage": "字节序: ABCD, DCBA, BADC, CDAB, BDAC",
+  "FlagRegistersUsage": "要初始化的保持寄存器数量"
 }
