@@ -16,9 +16,8 @@ import (
 var localeFS embed.FS
 
 var (
-	// bundle is the i18n bundle that holds all locale data.
-	// It is initialized by calling Init or MustInit.
-	bundle *i18n.Bundle
+	bundle   *i18n.Bundle
+	localizer *i18n.Localizer
 )
 
 // Init initializes the i18n bundle with the specified default language.
@@ -49,7 +48,16 @@ func Init(defaultLang string) error {
 		}
 	}
 
+	localizer = i18n.NewLocalizer(bundle, defaultLang)
 	return nil
+}
+
+// SetLanguage changes the current language for translations.
+// This allows runtime language switching.
+func SetLanguage(lang string) {
+	if bundle != nil {
+		localizer = i18n.NewLocalizer(bundle, lang)
+	}
 }
 
 // T translates a message by its ID with optional template data.
@@ -57,11 +65,9 @@ func Init(defaultLang string) error {
 // The templateData parameter can be used for variable substitution
 // in messages that contain placeholders like {{.Name}}.
 func T(messageID string, templateData map[string]interface{}) string {
-	if bundle == nil {
+	if localizer == nil {
 		return messageID
 	}
-
-	localizer := i18n.NewLocalizer(bundle, "")
 
 	msg, err := localizer.Localize(&i18n.LocalizeConfig{
 		MessageID:    messageID,

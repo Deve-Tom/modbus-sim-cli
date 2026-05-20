@@ -24,6 +24,8 @@ var (
 	Commit  = "none"
 )
 
+var langFlag string
+
 var rootCmd = &cobra.Command{
 	Use:   "modbus-sim",
 	Short: "Modbus RTU/TCP Data Simulation CLI Tool",
@@ -120,6 +122,9 @@ var versionCmd = &cobra.Command{
 
 // init registers all CLI commands and flags.
 func init() {
+	// root command flags
+	rootCmd.PersistentFlags().StringVarP(&langFlag, "lang", "l", "en", "Language for output (en, zh)")
+
 	// run command flags
 	runCmd.Flags().StringVarP(&runCfgFile, "config", "c", "configs/example.yaml",
 		"Path to the configuration file")
@@ -136,8 +141,33 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 }
 
+// updateCommandDescriptions updates command descriptions with i18n translations.
+// This must be called after i18n.MustInit() in main().
+func updateCommandDescriptions() {
+	rootCmd.Short = i18n.T("AppDescription", nil)
+	rootCmd.Long = i18n.T("AppDescription", nil)
+
+	runCmd.Short = i18n.T("RunShort", nil)
+	runCmd.Long = i18n.T("RunLong", nil)
+
+	quickCmd.Short = i18n.T("QuickShort", nil)
+	quickCmd.Long = i18n.T("QuickLong", nil)
+
+	// Update flag usages
+	runCmd.Flags().Lookup("config").Usage = i18n.T("FlagConfigUsage", nil)
+	quickCmd.Flags().Lookup("mode").Usage = i18n.T("FlagModeUsage", nil)
+	quickCmd.Flags().Lookup("addr").Usage = i18n.T("FlagAddrUsage", nil)
+	quickCmd.Flags().Lookup("byte-order").Usage = i18n.T("FlagByteOrderUsage", nil)
+	quickCmd.Flags().Lookup("registers").Usage = i18n.T("FlagRegistersUsage", nil)
+}
+
 // Execute runs the root command. This is the main entry point for the CLI.
 func Execute() {
+	rootCmd.ParseFlags(os.Args[1:])
+	if langFlag != "" {
+		i18n.SetLanguage(langFlag)
+	}
+	updateCommandDescriptions()
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
