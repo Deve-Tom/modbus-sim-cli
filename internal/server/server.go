@@ -1,0 +1,119 @@
+// Package server provides the Modbus TCP and RTU server implementation.
+// It wraps the mbserver library and integrates with the simulator.
+package server
+
+import (
+	"fmt"
+
+	"github.com/goburrow/serial"
+	"github.com/leijux/mbserver"
+	"github.com/rs/zerolog"
+
+	"modbus-sim/internal/simulator"
+)
+
+// Server wraps the Modbus server and manages its lifecycle.
+type Server struct {
+	logger zerolog.Logger
+	sim    *simulator.Simulator
+	srv    *mbserver.Server
+}
+
+// New creates a new Server with the given simulator.
+func New(sim *simulator.Simulator) *Server {
+	return &Server{
+		logger: sim.Logger().With().Str("component", "server").Logger(),
+		sim:    sim,
+	}
+}
+
+// Start starts the Modbus server based on the configured mode (TCP or RTU).
+func (s *Server) Start() error {
+	cfg := s.sim.Config()
+
+	// Create server with custom register
+	s.srv = mbserver.NewServer(
+		mbserver.WithRegister(s.sim.MemRegister()),
+	)
+
+	switch cfg.Mode {
+	case "tcp":
+		return s.startTCP()
+	case "rtu":
+		return s.startRTU()
+	default:
+		return fmt.Errorf("unsupported server mode: %s (must be 'tcp' or 'rtu')", cfg.Mode)
+	}
+}
+
+// startTCP starts the Modbus TCP server.
+func (s *Server) startTCP() error {
+	// Start TCP listener
+	if err := s.srv.ListenTCP(s.sim.Config().ListenAddr); err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", s.sim.Config().ListenAddr, err)
+	}
+
+	// Start server
+	go s.srv.Start()
+
+	s.logger.Info().Str("addr", s.sim.Config().ListenAddr).Msg("TCP server started")
+	return nil
+}
+
+// startRTU starts the Modbus RTU server over a serial port.
+func (s *Server) startRTU() error {
+	cfg := s.sim.Config()
+	if cfg.Serial == nil {
+		return fmt.Errorf("serial configuration is required for RTU mode")
+	}
+
+	// Open serial port
+	serialConfig := &serial.Config{
+		Address:  s.sim.Config().ListenAddr,
+		BaudRate: cfg.Serial.BaudRate,
+		DataBits: cfg.Serial.DataBits,
+		StopBits: cfg.Serial.StopBits,
+		Parity:   getParity(cfg.Serial.Parity),
+	}
+
+	if err := s.srv.ListenRTU(serialConfig); err != nil {
+		return fmt.Errorf("failed to open serial port %s: %w", s.sim.Config().ListenAddr, err)
+	}
+
+	// Start server
+	go s.srv.Start()
+
+	s.logger.Info().
+		Str("port", s.sim.Config().ListenAddr).
+		Int("baud", cfg.Serial.BaudRate).
+		Msg("RTU server started")
+	return nil
+}
+
+// Stop gracefully stops the Modbus server.
+func (s *Server) Stop() error {
+	if s.srv != nil {
+		s.srv.Shutdown()
+	}
+	s.logger.Info().Msg("server stopped")
+	return nil
+}
+
+// IsRunning returns whether the server is currently running.
+func (s *Server) IsRunning() bool {
+	return s.srv != nil
+}
+
+// getParity converts a parity string to the goburrow/serial format.
+func getParity(p string) string {
+	switch p {
+	case "odd":
+		return "O"
+	case "even":
+		return "E"
+	case "none", "":
+		return "N"
+	default:
+		return "N"
+	}
+}

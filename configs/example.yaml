@@ -1,0 +1,54 @@
+# Modbus-Sim Example Configuration
+
+# Server mode: "tcp" or "rtu"
+mode: tcp
+
+# TCP listen address (e.g., ":502" for standard Modbus TCP port)
+listen_addr: ":502"
+
+# Byte order for multi-register values.
+# Supported values:
+#   ABCD - BigEndian (default)
+#   DCBA - LittleEndian
+#   BADC - BigEndianSwap
+#   CDAB - LittleEndianSwap
+#   BDAC - MidSwap (swap high bytes within each word)
+byte_order: ABCD
+
+# Serial port configuration (required for RTU mode, ignored for TCP)
+serial:
+  baud_rate: 9600
+  data_bits: 8
+  stop_bits: 1
+  parity: "none"
+
+# Register definitions
+# Each entry defines a range of holding registers.
+registers:
+  # Temperature sensor registers (addresses 0-9)
+  - address: 0
+    count: 10
+    value: 0
+    label: "temperature_sensor_1"
+
+  # Pressure sensor registers (addresses 100-109)
+  - address: 100
+    count: 10
+    value: 0
+    label: "pressure_sensor_1"
+
+  # Flow meter registers (addresses 200-204)
+  - address: 200
+    count: 5
+    value: 1000
+    label: "flow_meter_1"
+
+  # Status registers (addresses 300-309)
+  - address: 300
+    count: 10
+    value: 0
+    label: "device_status"
+
+# Log configuration
+log_format: console   # "console" or "json"
+log_level: info       # "debug", "info", "warn", "error"

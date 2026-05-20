@@ -1,0 +1,82 @@
+{
+  "AppDescription": {
+    "description": "Application description",
+    "message": "Modbus RTU/TCP Data Simulation CLI Tool"
+  },
+  "ServerStarting": {
+    "description": "Server starting message",
+    "message": "Server is starting..."
+  },
+  "ServerStarted": {
+    "description": "Server started message",
+    "message": "Server started successfully"
+  },
+  "ServerStopped": {
+    "description": "Server stopped message",
+    "message": "Server stopped"
+  },
+  "ConfigLoaded": {
+    "description": "Configuration loaded message",
+    "message": "Configuration loaded from {{.File}}"
+  },
+  "ConfigLoadFailed": {
+    "description": "Configuration load failure",
+    "message": "Failed to load configuration: {{.Error}}"
+  },
+  "RegisterInitialized": {
+    "description": "Register initialized message",
+    "message": "Initialized {{.Count}} registers"
+  },
+  "InvalidByteOrder": {
+    "description": "Invalid byte order error",
+    "message": "Invalid byte order: {{.Order}}"
+  },
+  "QuickStartInfo": {
+    "description": "Quick start information",
+    "message": "Quick start: Modbus {{.Mode}} server on {{.Addr}} with {{.Registers}} registers"
+  },
+  "VersionInfo": {
+    "description": "Version information",
+    "message": "Modbus-Sim version {{.Version}} (build {{.Commit}})"
+  },
+  "UsageTitle": {
+    "description": "Usage title",
+    "message": "Usage:"
+  },
+  "RunLong": {
+    "description": "Run command long description",
+    "message": "Start the Modbus simulation server with a configuration file"
+  },
+  "RunShort": {
+    "description": "Run command short description",
+    "message": "Start Modbus simulator with config file"
+  },
+  "QuickLong": {
+    "description": "Quick command long description",
+    "message": "Quick start a Modbus simulation server with command-line flags"
+  },
+  "QuickShort": {
+    "description": "Quick command short description",
+    "message": "Quick start Modbus simulator"
+  },
+  "FlagConfigUsage": {
+    "description": "Config flag usage",
+    "message": "Path to the configuration file"
+  },
+  "FlagModeUsage": {
+    "description": "Mode flag usage",
+    "message": "Server mode: tcp or rtu"
+  },
+  "FlagAddrUsage": {
+    "description": "Address flag usage",
+    "message": "Listen address (TCP) or serial port (RTU)"
+  },
+  "FlagByteOrderUsage": {
+    "description": "Byte order flag usage",
+    "message": "Byte order: ABCD, DCBA, BADC, CDAB, BDAC"
+  },
+  "FlagRegistersUsage": {
+    "description": "Registers flag usage",
+    "message": "Number of holding registers to initialize"
+  }
+}
