@@ -1,8 +1,9 @@
-package byteorder
+package byteorder_test
 
 import (
 	"testing"
 
+	"modbus-sim/internal/byteorder"
 	"modbus-sim/internal/config"
 )
 
@@ -23,7 +24,7 @@ func TestResolve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Resolve(tt.byteOrder)
+			got, err := byteorder.Resolve(tt.byteOrder)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Resolve() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -49,7 +50,7 @@ func TestByteOrderRoundTrip(t *testing.T) {
 	for _, order := range orders {
 		orderName := string(order.name)
 		t.Run(orderName+"_Uint32", func(t *testing.T) {
-			bo, err := Resolve(order.name)
+			bo, err := byteorder.Resolve(order.name)
 			if err != nil {
 				t.Fatalf("Resolve(%s) failed: %v", orderName, err)
 			}
@@ -65,7 +66,7 @@ func TestByteOrderRoundTrip(t *testing.T) {
 		})
 
 		t.Run(orderName+"_Uint64", func(t *testing.T) {
-			bo, err := Resolve(order.name)
+			bo, err := byteorder.Resolve(order.name)
 			if err != nil {
 				t.Fatalf("Resolve(%s) failed: %v", orderName, err)
 			}
@@ -84,7 +85,7 @@ func TestByteOrderRoundTrip(t *testing.T) {
 
 // TestBDACSpecific tests the BDAC byte order encoding specifically.
 func TestBDACSpecific(t *testing.T) {
-	bo, err := Resolve(config.MidSwap)
+	bo, err := byteorder.Resolve(config.MidSwap)
 	if err != nil {
 		t.Fatalf("Resolve(MidSwap) failed: %v", err)
 	}

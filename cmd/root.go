@@ -64,6 +64,11 @@ var (
 	quickAddr      string
 	quickByteOrder string
 	quickRegisters int
+	quickRandom    bool
+	quickRandomMin float64
+	quickRandomMax float64
+	quickColor     bool
+	quickShowData  bool
 )
 
 var quickCmd = &cobra.Command{
@@ -75,6 +80,11 @@ var quickCmd = &cobra.Command{
 		cfg.Mode = quickMode
 		cfg.ListenAddr = quickAddr
 		cfg.ByteOrder = config.ByteOrder(quickByteOrder)
+		cfg.RandomEnable = &quickRandom
+		cfg.RandomMin = quickRandomMin
+		cfg.RandomMax = quickRandomMax
+		cfg.ColorOutput = &quickColor
+		cfg.ShowData = &quickShowData
 
 		log.Info().Msg(
 			i18n.T("QuickStartInfo", map[string]interface{}{
@@ -134,6 +144,11 @@ func init() {
 	quickCmd.Flags().StringVarP(&quickAddr, "addr", "a", ":502", "Listen address (TCP) or serial port (RTU)")
 	quickCmd.Flags().StringVarP(&quickByteOrder, "byte-order", "b", "ABCD", "Byte order: ABCD, DCBA, BADC, CDAB, BDAC")
 	quickCmd.Flags().IntVarP(&quickRegisters, "registers", "r", 100, "Number of holding registers to initialize")
+	quickCmd.Flags().BoolVarP(&quickRandom, "random", "", false, "Enable random value fluctuation")
+	quickCmd.Flags().Float64VarP(&quickRandomMin, "random-min", "", 0, "Minimum value for random fluctuation")
+	quickCmd.Flags().Float64VarP(&quickRandomMax, "random-max", "", 100, "Maximum value for random fluctuation")
+	quickCmd.Flags().BoolVarP(&quickColor, "color", "", true, "Enable colored console output")
+	quickCmd.Flags().BoolVarP(&quickShowData, "show-data", "", false, "Show request and response data")
 
 	// Register subcommands
 	rootCmd.AddCommand(runCmd)
@@ -228,7 +243,8 @@ func setupLogger(cfg *config.Config) {
 		log.Logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
 	} else {
 		// Console format for development
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		colorOutput := cfg.ColorOutput != nil && *cfg.ColorOutput
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, NoColor: !colorOutput})
 	}
 }
 

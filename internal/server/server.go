@@ -3,7 +3,9 @@
 package server
 
 import (
+	"encoding/hex"
 	"fmt"
+	"net"
 
 	"github.com/goburrow/serial"
 	"github.com/leijux/mbserver"
@@ -14,16 +16,19 @@ import (
 
 // Server wraps the Modbus server and manages its lifecycle.
 type Server struct {
-	logger zerolog.Logger
-	sim    *simulator.Simulator
-	srv    *mbserver.Server
+	logger   zerolog.Logger
+	sim      *simulator.Simulator
+	srv      *mbserver.Server
+	showData bool
 }
 
 // New creates a new Server with the given simulator.
 func New(sim *simulator.Simulator) *Server {
+	showData := sim.Config().ShowData != nil && *sim.Config().ShowData
 	return &Server{
-		logger: sim.Logger().With().Str("component", "server").Logger(),
-		sim:    sim,
+		logger:   sim.Logger().With().Str("component", "server").Logger(),
+		sim:      sim,
+		showData: showData,
 	}
 }
 
@@ -44,6 +49,54 @@ func (s *Server) Start() error {
 	default:
 		return fmt.Errorf("unsupported server mode: %s (must be 'tcp' or 'rtu')", cfg.Mode)
 	}
+}
+
+// loggingListener wraps a net.Listener to log connections.
+type loggingListener struct {
+	net.Listener
+	logger zerolog.Logger
+}
+
+// Accept implements net.Listener and logs connection info.
+func (l *loggingListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	addr := conn.RemoteAddr().String()
+	l.logger.Info().Str("client", addr).Msg("client connected")
+	return &loggingConn{Conn: conn, logger: l.logger, remoteAddr: addr}, nil
+}
+
+// loggingConn wraps a net.Conn to log read/write operations.
+type loggingConn struct {
+	net.Conn
+	logger     zerolog.Logger
+	remoteAddr string
+}
+
+// Read logs the data read from the connection.
+func (c *loggingConn) Read(b []byte) (n int, err error) {
+	n, err = c.Conn.Read(b)
+	if n > 0 {
+		c.logger.Debug().
+			Str("client", c.remoteAddr).
+			Str("data", hex.EncodeToString(b[:n])).
+			Msg("received")
+	}
+	return
+}
+
+// Write logs the data written to the connection.
+func (c *loggingConn) Write(b []byte) (n int, err error) {
+	if len(b) > 0 {
+		c.logger.Debug().
+			Str("client", c.remoteAddr).
+			Str("data", hex.EncodeToString(b)).
+			Msg("sent")
+	}
+	n, err = c.Conn.Write(b)
+	return
 }
 
 // startTCP starts the Modbus TCP server.

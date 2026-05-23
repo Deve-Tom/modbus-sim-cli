@@ -29,8 +29,12 @@ Modbus-Sim is a command-line tool that simulates Modbus devices for testing, dev
 - **Quick Start Mode**: One-command startup for rapid testing
 - **Multiple Byte Orders**: Support for ABCD, DCBA, BADC, CDAB, and BDAC byte ordering
 - **Custom Register Ranges**: Define multiple register blocks with custom initial values
+- **Multi-Type Registers**: Support for INT16, UINT16, INT32, UINT32, INT64, UINT64, FLOAT32, FLOAT64 data types
+- **Random Value Fluctuation**: Configurable random value changes for simulation
 - **Internationalization**: Built-in support for English and Chinese languages
 - **Structured Logging**: Configurable log formats (console/JSON) with multiple log levels
+- **Colored Output**: Optional colored console output for better readability
+- **Request/Response Logging**: Optional detailed data logging for debugging
 - **Cross-Platform**: Pre-built binaries for Windows, Linux, macOS (including ARM)
 - **Zero Dependencies**: Single binary deployment, no runtime dependencies required
 
@@ -208,6 +212,11 @@ For more complex setups, use a YAML configuration file:
 | `--addr` | `-a` | Listen address (TCP) or serial port (RTU) | `:502` |
 | `--byte-order` | `-b` | Byte order: `ABCD`, `DCBA`, `BADC`, `CDAB`, `BDAC` | `ABCD` |
 | `--registers` | `-r` | Number of holding registers to initialize | `100` |
+| `--random` | | Enable random value fluctuation | `false` |
+| `--random-min` | | Minimum value for random fluctuation | `0` |
+| `--random-max` | | Maximum value for random fluctuation | `100` |
+| `--color` | | Enable colored console output | `true` |
+| `--show-data` | | Show request and response data | `false` |
 
 #### Run Command Flags
 
@@ -245,37 +254,111 @@ serial:
   stop_bits: 1         # 1 or 2
   parity: "none"       # "none", "odd", or "even"
 
+# Display settings
+color_output: true      # Enable colored console output
+show_data: false        # Enable logging of requests and responses data
+
+# Random value fluctuation settings
+random_enable: false   # Globally enable random value fluctuation
+random_min: 0          # Default minimum value for random fluctuation
+random_max: 100        # Default maximum value for random fluctuation
+
 # Register definitions
-# Each entry defines a contiguous range of holding registers
+# Each entry defines a contiguous range of holding registers.
 registers:
-  # Temperature sensor registers (addresses 0-9)
+  # Temperature sensor registers (addresses 0-19, 20 physical registers)
+  # With FLOAT32 type (2 regs per value), this gives 10 FLOAT32 values
   - address: 0
-    count: 10
-    value: 0
+    count: 20
+    type: FLOAT32
     label: "temperature_sensor_1"
+    default_value: 0     # Used if values array is not specified
+    random_enable: true
+    random_min: 15.0
+    random_max: 35.0
 
-  # Pressure sensor registers (addresses 100-109)
+  # Pressure sensor registers (addresses 100-119, 20 physical registers)
+  # With FLOAT32 type, this gives 10 FLOAT32 values
   - address: 100
-    count: 10
-    value: 0
+    count: 20
+    type: FLOAT32
     label: "pressure_sensor_1"
+    default_value: 1013.25
 
-  # Flow meter registers (addresses 200-204)
+  # Flow meter registers (addresses 200-219, 20 physical registers)
+  # With UINT32 type (2 regs per value), this gives 10 UINT32 values
+  # Using values array to specify each value explicitly
   - address: 200
-    count: 5
-    value: 1000
+    count: 20
+    type: UINT32
     label: "flow_meter_1"
+    values: [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
 
-  # Device status registers (addresses 300-309)
+  # Device status registers (addresses 300-309, 10 physical registers)
+  # With UINT16 type (1 reg per value), this gives 10 UINT16 values
   - address: 300
     count: 10
-    value: 0
+    type: UINT16
     label: "device_status"
+    default_value: 1
 
 # Logging configuration
 log_format: console   # "console" for human-readable, "json" for production
 log_level: info       # "debug", "info", "warn", or "error"
 ```
+
+### Register Configuration Fields
+
+Each register entry supports the following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `address` | uint16 | Yes | Starting register address (0-based) |
+| `count` | uint16 | Yes | Number of **physical 16-bit registers** |
+| `type` | string | No | Data type (INT16, UINT16, INT32, UINT32, INT64, UINT64, FLOAT32, FLOAT64). Defaults to UINT16 if not specified. |
+| `label` | string | No | Human-readable label for this register range |
+| `values` | float64[] | No | Array of initial values (one per data value, not per physical register) |
+| `default_value` | float64 | No | Initial value for all data values if `values` is not specified |
+| `random_enable` | bool | No | Enable random fluctuation for this range |
+| `random_min` | float64 | No | Minimum value for random fluctuation |
+| `random_max` | float64 | No | Maximum value for random fluctuation |
+
+### How Count and Type Work Together
+
+The `count` field specifies the **number of physical 16-bit registers**, while `type` determines how many registers each data value occupies:
+
+| Type | Registers per Value | Example |
+|------|-------------------|---------|
+| INT16, UINT16 | 1 | count=10 → 10 values |
+| INT32, UINT32, FLOAT32 | 2 | count=20 → 10 values |
+| INT64, UINT64, FLOAT64 | 4 | count=20 → 5 values |
+
+**Example:** `count: 20` with `type: FLOAT32` means:
+- 20 physical registers
+- 10 FLOAT32 values (20 / 2 registers per value)
+- Each FLOAT32 value occupies 2 consecutive physical registers
+
+### Initial Values
+
+You can specify initial values using either:
+
+1. **`default_value`**: Single value applied to all data values in the range
+   ```yaml
+   - address: 0
+     count: 20
+     type: FLOAT32
+     default_value: 25.5  # All 10 FLOAT32 values start at 25.5
+   ```
+
+2. **`values`**: Array of values, one per data value
+   ```yaml
+   - address: 0
+     count: 20
+     type: FLOAT32
+     values: [25.5, 26.0, 26.5, 27.0, 27.5, 28.0, 28.5, 29.0, 29.5, 30.0]
+   ```
+
+If neither is specified, all values default to 0.
 
 ### Register Configuration Examples
 
@@ -350,6 +433,90 @@ Consider a 32-bit value `0x12345678` stored in two consecutive registers:
 | **BDAC** | `0x1256` | `0x3478` | MidSwap (word byte swap) |
 
 **Recommendation:** Use `ABCD` unless your target device specifically requires a different byte order. Check your device documentation for the correct setting.
+
+### Random Value Fluctuation
+
+The simulator supports random value fluctuation for simulating dynamic sensor data. This feature can be enabled globally or per-register-range.
+
+#### CLI Usage
+
+```bash
+# Enable random fluctuation with default range (0-100)
+./modbus-sim quick --random
+
+# Custom value range
+./modbus-sim quick --random --random-min 10 --random-max 50
+```
+
+#### Configuration File Usage
+
+```yaml
+# Global settings (apply to all registers)
+random_enable: true
+random_min: 0
+random_max: 100
+
+# Per-register override
+registers:
+  - address: 0
+    count: 10
+    value: 0
+    type: UINT16
+    random_enable: true   # Override global setting
+    random_min: 15.0     # Override global min
+    random_max: 35.0     # Override global max
+```
+
+### Colored Output
+
+The simulator supports colored console output for better readability. This feature is enabled by default but can be disabled.
+
+#### CLI Usage
+
+```bash
+# Disable colored output
+./modbus-sim quick --color=false
+
+# Enable colored output (default)
+./modbus-sim quick --color=true
+```
+
+#### Configuration File Usage
+
+```yaml
+color_output: false  # Disable colored output
+```
+
+### Request/Response Data Logging
+
+The simulator can log the actual data sent and received, which is useful for debugging Modbus communication.
+
+#### CLI Usage
+
+```bash
+# Enable data logging
+./modbus-sim quick --show-data
+```
+
+#### Configuration File Usage
+
+```yaml
+show_data: true  # Enable data logging
+```
+
+#### Output Format
+
+When enabled, the simulator logs:
+- **TCP Mode**: Client connection/disconnection events and data frames
+  ```
+  {"level":"info","component":"server","client":"192.168.1.100:54321","message":"client connected"}
+  {"level":"debug","component":"server","client":"192.168.1.100:54321","data":"11000000000601030000000a","message":"received"}
+  {"level":"debug","component":"server","client":"192.168.1.100:54321","data":"11000000170601030000000a020b...",message":"sent"}
+  ```
+- **RTU Mode**: Data frames (without client info)
+  ```
+  {"level":"debug","component":"server","data":"11000000000601030000000a","message":"received"}
+  ```
 
 ## 🧪 Testing & Integration
 

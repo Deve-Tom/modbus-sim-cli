@@ -22,33 +22,73 @@ serial:
   stop_bits: 1
   parity: "none"
 
+# Display settings
+# color_output: enables colored console output (default: true)
+# show_data: enables logging of received requests and responses data (default: false)
+color_output: true
+show_data: false
+
+# Random value fluctuation settings
+# random_enable: globally enable random value fluctuation (default: false)
+# random_min: default minimum value for random fluctuation
+# random_max: default maximum value for random fluctuation
+random_enable: false
+random_min: 0
+random_max: 100
+
 # Register definitions
 # Each entry defines a range of holding registers.
+# Supported types: INT16, UINT16, INT32, UINT32, INT64, UINT64, FLOAT32, FLOAT64
+# How count and type work together:
+#   - count: number of physical 16-bit registers
+#   - type: data type, determines how many registers each value occupies
+#   - Number of values = count / (registers_per_type)
+#   - Example: count=20 with FLOAT32 (2 regs/value) = 10 FLOAT32 values
 registers:
-  # Temperature sensor registers (addresses 0-9)
+  # Temperature sensor registers (addresses 0-19, 20 physical registers)
+  # With FLOAT32 type (2 regs/value), this gives 10 FLOAT32 values
   - address: 0
-    count: 10
-    value: 0
+    count: 20
+    type: FLOAT32
     label: "temperature_sensor_1"
+    default_value: 0
+    random_enable: true
+    random_min: 15.0
+    random_max: 35.0
 
-  # Pressure sensor registers (addresses 100-109)
+  # Pressure sensor registers (addresses 100-119, 20 physical registers)
+  # With FLOAT32 type, this gives 10 FLOAT32 values
   - address: 100
-    count: 10
-    value: 0
+    count: 20
+    type: FLOAT32
     label: "pressure_sensor_1"
+    default_value: 1013.25
 
-  # Flow meter registers (addresses 200-204)
+  # Flow meter registers (addresses 200-219, 20 physical registers)
+  # With UINT32 type (2 regs/value), this gives 10 UINT32 values
+  # Using values array to specify each value explicitly
   - address: 200
-    count: 5
-    value: 1000
+    count: 20
+    type: UINT32
     label: "flow_meter_1"
+    values: [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
 
-  # Status registers (addresses 300-309)
+  # Status registers (addresses 300-309, 10 physical registers)
+  # With UINT16 type (1 reg/value), this gives 10 UINT16 values
   - address: 300
     count: 10
-    value: 0
+    type: UINT16
     label: "device_status"
+    default_value: 1
+
+  # Mixed type example - INT64 registers (addresses 400-419, 20 physical registers)
+  # With INT64 type (4 regs/value), this gives 5 INT64 values
+  - address: 400
+    count: 20
+    type: INT64
+    label: "timestamp_data"
+    default_value: 0
 
 # Log configuration
 log_format: console   # "console" or "json"
-log_level: info       # "debug", "info", "warn", "error"
+log_level: info      # "debug", "info", "warn", "error"
