@@ -4,6 +4,7 @@ package register
 
 import (
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/leijux/mbserver"
@@ -13,9 +14,9 @@ import (
 // Manager manages Modbus registers with thread-safe access.
 // It wraps mbserver.MemRegister to implement the mbserver.Register interface.
 type Manager struct {
-	mu        sync.RWMutex
-	logger    zerolog.Logger
-	memReg    *mbserver.MemRegister
+	mu     sync.RWMutex
+	logger zerolog.Logger
+	memReg *mbserver.MemRegister
 }
 
 // NewManager creates a new register manager with the given logger.
@@ -28,11 +29,11 @@ func NewManager(logger zerolog.Logger) *Manager {
 
 // RegisterConfig defines the configuration for a single register or register range.
 type RegisterConfig struct {
-	Address  uint16
-	Count    uint16
-	Type     string // "INT16", "UINT16", "INT32", "UINT32", "INT64", "UINT64", "FLOAT32", "FLOAT64"
-	Values   []float64 // Initial values (one per data value, not per physical register)
-	Label    string
+	Address uint16
+	Count   uint16
+	Type    string    // "INT16", "UINT16", "INT32", "UINT32", "INT64", "UINT64", "FLOAT32", "FLOAT64"
+	Values  []float64 // Initial values (one per data value, not per physical register)
+	Label   string
 }
 
 // InitFromConfig initializes registers from configuration definitions.
@@ -85,6 +86,12 @@ func (m *Manager) InitFromConfig(regConfigs []RegisterConfig) error {
 	return nil
 }
 
+// GetRegistersPerValue returns the number of 16-bit registers per value for the given type.
+// This is the exported version for use by external packages like simulator.
+func GetRegistersPerValue(typeStr string) int {
+	return getRegistersPerValue(typeStr)
+}
+
 // getRegistersPerValue returns the number of 16-bit registers per value for the given type.
 func getRegistersPerValue(typeStr string) int {
 	switch typeStr {
@@ -113,15 +120,29 @@ func convertToUint16s(value float64, typeStr string, regsPerValue int) []uint16 
 		}
 		result[0] = uint16(int16(value))
 
-	case "UINT16", "", "FLOAT32", "FLOAT64":
-		// For unspecified type or floating types, store as-is in uint16
-		// This may lose precision for float types, but maintains basic compatibility
+	case "UINT16", "":
+		// For unspecified type, store as-is in uint16
 		if value < 0 {
 			value = 0
 		} else if value > 65535 {
 			value = 65535
 		}
 		result[0] = uint16(value)
+
+	case "FLOAT32":
+		// Encode IEEE 754 float32 into 2 registers (big-endian for ABCD byte order)
+		f32 := float32(value)
+		bits := math.Float32bits(f32)
+		result[0] = uint16((bits >> 16) & 0xFFFF)
+		result[1] = uint16(bits & 0xFFFF)
+
+	case "FLOAT64":
+		// Encode IEEE 754 float64 into 4 registers (big-endian for ABCD byte order)
+		bits := math.Float64bits(value)
+		result[0] = uint16((bits >> 48) & 0xFFFF)
+		result[1] = uint16((bits >> 32) & 0xFFFF)
+		result[2] = uint16((bits >> 16) & 0xFFFF)
+		result[3] = uint16(bits & 0xFFFF)
 
 	case "INT32":
 		// Convert to int32, split across 2 registers (big-endian style for ABCD)

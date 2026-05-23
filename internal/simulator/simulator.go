@@ -50,7 +50,7 @@ func (s *Simulator) InitRegisters() error {
 		}
 
 		// Determine registers per value based on type
-		regsPerValue := getRegistersPerValue(regType)
+		regsPerValue := register.GetRegistersPerValue(regType)
 		numValues := int(rc.Count) / regsPerValue
 
 		// Prepare values - use Values array if specified, otherwise use DefaultValue
@@ -81,20 +81,6 @@ func (s *Simulator) InitRegisters() error {
 	}
 
 	return s.regManager.InitFromConfig(regDefs)
-}
-
-// getRegistersPerValue returns the number of 16-bit registers per value for the given type.
-func getRegistersPerValue(typeStr string) int {
-	switch typeStr {
-	case "INT16", "UINT16", "":
-		return 1
-	case "INT32", "UINT32", "FLOAT32":
-		return 2
-	case "INT64", "UINT64", "FLOAT64":
-		return 4
-	default:
-		return 1
-	}
 }
 
 // InitSimpleRegisters initializes a simple contiguous range of registers.

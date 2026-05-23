@@ -256,9 +256,9 @@ func LoadFromFile(path string) (*Config, error) {
 	if cfg.LogLevel == "" {
 		cfg.LogLevel = "info"
 	}
-	// Default pointer fields to false if not set
+	// Default pointer fields to false if not set (except ColorOutput which defaults to true)
 	if cfg.ColorOutput == nil {
-		cfg.ColorOutput = newBool(false)
+		cfg.ColorOutput = newBool(true)
 	}
 	if cfg.ShowData == nil {
 		cfg.ShowData = newBool(false)
