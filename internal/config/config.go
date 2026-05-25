@@ -192,6 +192,9 @@ type Config struct {
 
 	// RandomMax is the default maximum value for random fluctuation.
 	RandomMax float64 `yaml:"random_max,omitempty"`
+
+	// RandomInterval is the interval in seconds between random value updates.
+	RandomInterval float64 `yaml:"random_interval,omitempty"`
 }
 
 // LoadFromFile reads and parses a YAML configuration file.

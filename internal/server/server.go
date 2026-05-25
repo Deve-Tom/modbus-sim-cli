@@ -36,10 +36,16 @@ func New(sim *simulator.Simulator) *Server {
 func (s *Server) Start() error {
 	cfg := s.sim.Config()
 
-	// Create server with custom register
+	// Enable/disable data logging in register manager
+	s.sim.RegisterManager().SetShowData(s.showData)
+
+	// Create server with custom register (use Manager directly)
 	s.srv = mbserver.NewServer(
-		mbserver.WithRegister(s.sim.MemRegister()),
+		mbserver.WithRegister(s.sim.RegisterManager()),
 	)
+
+	// Start random value updates
+	s.sim.StartRandomUpdates()
 
 	switch cfg.Mode {
 	case "tcp":
@@ -148,6 +154,8 @@ func (s *Server) Stop() error {
 	if s.srv != nil {
 		s.srv.Shutdown()
 	}
+	// Stop random value updates
+	s.sim.StopRandomUpdates()
 	s.logger.Info().Msg("server stopped")
 	return nil
 }

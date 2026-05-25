@@ -4,6 +4,7 @@ package simulator
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/leijux/mbserver"
 	"github.com/rs/zerolog"
@@ -34,6 +35,11 @@ func New(cfg *config.Config, logger zerolog.Logger) (*Simulator, error) {
 		logger:        logger.With().Str("component", "simulator").Logger(),
 		regManager:    register.NewManager(logger),
 		byteOrderImpl: bo,
+	}
+
+	// Set random update interval if configured
+	if cfg.RandomInterval > 0 {
+		sim.regManager.SetRandomInterval(time.Duration(cfg.RandomInterval * float64(time.Second)))
 	}
 
 	return sim, nil
@@ -67,11 +73,14 @@ func (s *Simulator) InitRegisters() error {
 		// If both are empty/nil, register.InitFromConfig will use zeros
 
 		regDefs[i] = register.RegisterConfig{
-			Address: rc.Address,
-			Count:   rc.Count,
-			Type:    regType,
-			Values:  values,
-			Label:   rc.Label,
+			Address:      rc.Address,
+			Count:        rc.Count,
+			Type:         regType,
+			Values:       values,
+			Label:        rc.Label,
+			RandomEnable: rc.RandomEnable,
+			RandomMin:    rc.RandomMin,
+			RandomMax:    rc.RandomMax,
 		}
 	}
 
@@ -81,6 +90,17 @@ func (s *Simulator) InitRegisters() error {
 	}
 
 	return s.regManager.InitFromConfig(regDefs)
+}
+
+// StartRandomUpdates starts periodic random value updates.
+func (s *Simulator) StartRandomUpdates() {
+	globalEnable := s.cfg.RandomEnable != nil && *s.cfg.RandomEnable
+	s.regManager.StartRandomUpdates(globalEnable, s.cfg.RandomMin, s.cfg.RandomMax)
+}
+
+// StopRandomUpdates stops periodic random value updates.
+func (s *Simulator) StopRandomUpdates() {
+	s.regManager.StopRandomUpdates()
 }
 
 // InitSimpleRegisters initializes a simple contiguous range of registers.

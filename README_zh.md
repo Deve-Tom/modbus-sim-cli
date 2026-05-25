@@ -215,6 +215,7 @@ mode
 | `--random` | | 启用随机值波动 | `false` |
 | `--random-min` | | 随机值波动的最小值 | `0` |
 | `--random-max` | | 随机值波动的最大值 | `100` |
+| `--random-interval` | | 随机值更新间隔（秒） | `1.0` |
 | `--color` | | 启用彩色控制台输出 | `true` |
 | `--show-data` | | 显示请求和响应数据 | `false` |
 
@@ -262,6 +263,7 @@ show_data: false        # 启用请求和响应数据的日志记录
 random_enable: false   # 全局启用随机值波动
 random_min: 0          # 随机值波动的默认最小值
 random_max: 100        # 随机值波动的默认最大值
+random_interval: 1.0   # 随机值更新间隔（秒）
 
 # 寄存器定义
 # 每个条目定义一个连续的保持寄存器范围
@@ -446,6 +448,9 @@ registers:
 
 # 自定义值范围
 ./modbus-sim quick --random --random-min 10 --random-max 50
+
+# 自定义更新间隔（每 2 秒更新一次）
+./modbus-sim quick --random --random-interval 2.0
 ```
 
 #### 配置文件使用
@@ -455,6 +460,7 @@ registers:
 random_enable: true
 random_min: 0
 random_max: 100
+random_interval: 1.0  # 每 1 秒更新一次（默认）
 
 # 单个寄存器覆盖
 registers:
@@ -510,12 +516,12 @@ show_data: true  # 启用数据日志
 - **TCP 模式：** 客户端连接/断开事件和数据帧
   ```
   {"level":"info","component":"server","client":"192.168.1.100:54321","message":"client connected"}
-  {"level":"debug","component":"server","client":"192.168.1.100:54321","data":"11000000000601030000000a","message":"received"}
-  {"level":"debug","component":"server","client":"192.168.1.100:54321","data":"11000000170601030000000a020b...","message":"sent"}
+  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
+  {"level":"debug","component":"server","start":0,"value":1234,"message":"WriteSingleRegister"}
   ```
 - **RTU 模式：** 数据帧（无客户端信息）
   ```
-  {"level":"debug","component":"server","data":"11000000000601030000000a","message":"received"}
+  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
   ```
 
 ## 🧪 测试与集成

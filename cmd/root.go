@@ -60,15 +60,16 @@ var runCmd = &cobra.Command{
 // --- quick command ---
 
 var (
-	quickMode      string
-	quickAddr      string
-	quickByteOrder string
-	quickRegisters int
-	quickRandom    bool
-	quickRandomMin float64
-	quickRandomMax float64
-	quickColor     bool
-	quickShowData  bool
+	quickMode           string
+	quickAddr           string
+	quickByteOrder      string
+	quickRegisters      int
+	quickRandom         bool
+	quickRandomMin      float64
+	quickRandomMax      float64
+	quickRandomInterval float64
+	quickColor          bool
+	quickShowData       bool
 )
 
 var quickCmd = &cobra.Command{
@@ -83,6 +84,7 @@ var quickCmd = &cobra.Command{
 		cfg.RandomEnable = &quickRandom
 		cfg.RandomMin = quickRandomMin
 		cfg.RandomMax = quickRandomMax
+		cfg.RandomInterval = quickRandomInterval
 		cfg.ColorOutput = &quickColor
 		cfg.ShowData = &quickShowData
 
@@ -147,6 +149,7 @@ func init() {
 	quickCmd.Flags().BoolVarP(&quickRandom, "random", "", false, "Enable random value fluctuation")
 	quickCmd.Flags().Float64VarP(&quickRandomMin, "random-min", "", 0, "Minimum value for random fluctuation")
 	quickCmd.Flags().Float64VarP(&quickRandomMax, "random-max", "", 100, "Maximum value for random fluctuation")
+	quickCmd.Flags().Float64VarP(&quickRandomInterval, "random-interval", "", 1.0, "Interval in seconds between random value updates")
 	quickCmd.Flags().BoolVarP(&quickColor, "color", "", true, "Enable colored console output")
 	quickCmd.Flags().BoolVarP(&quickShowData, "show-data", "", false, "Show request and response data")
 

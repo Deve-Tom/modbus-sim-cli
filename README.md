@@ -215,6 +215,7 @@ For more complex setups, use a YAML configuration file:
 | `--random` | | Enable random value fluctuation | `false` |
 | `--random-min` | | Minimum value for random fluctuation | `0` |
 | `--random-max` | | Maximum value for random fluctuation | `100` |
+| `--random-interval` | | Interval in seconds between random value updates | `1.0` |
 | `--color` | | Enable colored console output | `true` |
 | `--show-data` | | Show request and response data | `false` |
 
@@ -259,9 +260,10 @@ color_output: true      # Enable colored console output
 show_data: false        # Enable logging of requests and responses data
 
 # Random value fluctuation settings
-random_enable: false   # Globally enable random value fluctuation
-random_min: 0          # Default minimum value for random fluctuation
-random_max: 100        # Default maximum value for random fluctuation
+random_enable: false    # Globally enable random value fluctuation
+random_min: 0           # Default minimum value for random fluctuation
+random_max: 100         # Default maximum value for random fluctuation
+random_interval: 1.0    # Interval in seconds between random value updates
 
 # Register definitions
 # Each entry defines a contiguous range of holding registers.
@@ -446,6 +448,9 @@ The simulator supports random value fluctuation for simulating dynamic sensor da
 
 # Custom value range
 ./modbus-sim quick --random --random-min 10 --random-max 50
+
+# Custom update interval (update every 2 seconds)
+./modbus-sim quick --random --random-interval 2.0
 ```
 
 #### Configuration File Usage
@@ -455,6 +460,7 @@ The simulator supports random value fluctuation for simulating dynamic sensor da
 random_enable: true
 random_min: 0
 random_max: 100
+random_interval: 1.0  # Update every 1 second by default
 
 # Per-register override
 registers:
@@ -510,12 +516,12 @@ When enabled, the simulator logs:
 - **TCP Mode**: Client connection/disconnection events and data frames
   ```
   {"level":"info","component":"server","client":"192.168.1.100:54321","message":"client connected"}
-  {"level":"debug","component":"server","client":"192.168.1.100:54321","data":"11000000000601030000000a","message":"received"}
-  {"level":"debug","component":"server","client":"192.168.1.100:54321","data":"11000000170601030000000a020b...",message":"sent"}
+  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
+  {"level":"debug","component":"server","start":0,"value":1234,"message":"WriteSingleRegister"}
   ```
 - **RTU Mode**: Data frames (without client info)
   ```
-  {"level":"debug","component":"server","data":"11000000000601030000000a","message":"received"}
+  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
   ```
 
 ## 🧪 Testing & Integration

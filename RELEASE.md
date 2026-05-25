@@ -1,5 +1,72 @@
 # Release Notes
 
+## v0.0.2 (2025-05-26)
+
+### Features
+
+- **Random Update Interval**: Added configurable random value update interval (in seconds):
+  - New global config: `random_interval` (default: 1.0)
+  - New CLI flag: `--random-interval`
+
+- **Improved Request/Response Logging**: Enhanced `show_data` feature to log meaningful data instead of raw hex:
+  - Logs function names, addresses, counts, and values
+  - Supports both TCP and RTU modes
+  - TCP mode includes client connection/disconnection events
+
+### Bug Fixes
+
+- **Random Value Fluctuation**: Fixed critical issue where random value updates didn't work in TCP/RTU mode:
+  - Implemented proper periodic random value updates with goroutine
+  - Fixed configuration passing to register manager
+  - RegisterManager now correctly handles both global and per-register random settings
+
+- **Register Interface**: Implemented correct `mbserver.Register` interface in RegisterManager to enable proper data logging:
+  - Added full implementation of ReadCoils, ReadDiscreteInputs, ReadHoldingRegisters, ReadInputRegisters
+  - Implemented WriteSingleCoil, WriteSingleRegister, WriteMultipleCoils, WriteMultipleRegisters
+  - All operations thread-safe with proper mutex locking
+
+### Command-Line Flags
+
+New/updated flags for the `quick` command:
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--random-interval` | Interval in seconds between random value updates | `1.0` |
+| `--color` | Enable colored console output | `true` |
+| `--random` | Enable random value fluctuation | `false` |
+| `--random-min` | Minimum value for random fluctuation | `0` |
+| `--random-max` | Maximum value for random fluctuation | `100` |
+| `--show-data` | Show request and response data | `false` |
+
+### Configuration Changes
+
+Added global `random_interval` configuration:
+
+```yaml
+# Random value fluctuation settings
+random_enable: false    # Globally enable random value fluctuation
+random_min: 0          # Default minimum value for random fluctuation
+random_max: 100        # Default maximum value for random fluctuation
+random_interval: 1.0    # Interval in seconds between random value updates
+
+registers:
+  - address: 0
+    count: 20
+    type: FLOAT32
+    default_value: 25.5
+    random_enable: true
+    random_min: 15.0
+    random_max: 35.0
+    label: "temperature"
+```
+
+### Documentation
+
+- Updated README.md and README_zh.md with new features
+- Updated example configuration file (configs/example.yaml)
+
+---
+
 ## v0.0.1 (2025-05-21)
 
 ### Features

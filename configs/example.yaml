@@ -32,9 +32,11 @@ show_data: false
 # random_enable: globally enable random value fluctuation (default: false)
 # random_min: default minimum value for random fluctuation
 # random_max: default maximum value for random fluctuation
+# random_interval: interval in seconds between random value updates (default: 1.0)
 random_enable: false
 random_min: 0
 random_max: 100
+random_interval: 1.0
 
 # Register definitions
 # Each entry defines a range of holding registers.
