@@ -4,6 +4,7 @@
 mode: tcp
 
 # TCP listen address (e.g., ":502" for standard Modbus TCP port)
+# For RTU mode, this field is ignored; use serial.address instead
 listen_addr: ":502"
 
 # Byte order for multi-register values.
@@ -17,6 +18,8 @@ byte_order: ABCD
 
 # Serial port configuration (required for RTU mode, ignored for TCP)
 serial:
+  # Serial port device path (required for RTU mode, e.g., "/dev/ttyAMA3", "/dev/ttyUSB0")
+  # address: "/dev/ttyAMA3"
   baud_rate: 9600
   data_bits: 8
   stop_bits: 1

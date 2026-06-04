@@ -236,7 +236,7 @@ Create a YAML configuration file to define your Modbus device simulation:
 mode: tcp
 
 # TCP listen address (e.g., ":502" for standard Modbus TCP port)
-# For RTU mode, this specifies the serial port (e.g., "/dev/ttyUSB0")
+# For RTU mode, use serial.address instead
 listen_addr: ":502"
 
 # Byte order for multi-register values
@@ -250,6 +250,7 @@ byte_order: ABCD
 
 # Serial port configuration (required for RTU mode, ignored for TCP)
 serial:
+  address: "/dev/ttyUSB0"  # Serial port device path (required for RTU mode)
   baud_rate: 9600      # Common values: 9600, 19200, 38400, 57600, 115200
   data_bits: 8         # Typically 8
   stop_bits: 1         # 1 or 2

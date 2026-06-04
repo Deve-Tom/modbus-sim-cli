@@ -126,9 +126,18 @@ func (s *Server) startRTU() error {
 		return fmt.Errorf("serial configuration is required for RTU mode")
 	}
 
+	// Determine serial port address: prefer Serial.Address, fallback to ListenAddr for backward compatibility
+	serialAddr := cfg.Serial.Address
+	if serialAddr == "" {
+		serialAddr = cfg.ListenAddr
+	}
+	if serialAddr == "" {
+		return fmt.Errorf("serial port address is required for RTU mode (set serial.address in config)")
+	}
+
 	// Open serial port
 	serialConfig := &serial.Config{
-		Address:  s.sim.Config().ListenAddr,
+		Address:  serialAddr,
 		BaudRate: cfg.Serial.BaudRate,
 		DataBits: cfg.Serial.DataBits,
 		StopBits: cfg.Serial.StopBits,
@@ -136,14 +145,14 @@ func (s *Server) startRTU() error {
 	}
 
 	if err := s.srv.ListenRTU(serialConfig); err != nil {
-		return fmt.Errorf("failed to open serial port %s: %w", s.sim.Config().ListenAddr, err)
+		return fmt.Errorf("failed to open serial port %s: %w", serialAddr, err)
 	}
 
 	// Start server
 	go s.srv.Start()
 
 	s.logger.Info().
-		Str("port", s.sim.Config().ListenAddr).
+		Str("port", serialAddr).
 		Int("baud", cfg.Serial.BaudRate).
 		Msg("RTU server started")
 	return nil

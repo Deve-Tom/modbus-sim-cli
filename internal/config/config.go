@@ -142,6 +142,9 @@ type RegisterConfig struct {
 
 // SerialConfig holds serial port configuration for RTU mode.
 type SerialConfig struct {
+	// Address is the serial port device path for RTU mode (e.g., "/dev/ttyAMA3", "/dev/ttyUSB0").
+	Address string `yaml:"address"`
+
 	// BaudRate is the serial port baud rate (e.g., 9600, 19200, 115200).
 	BaudRate int `yaml:"baud_rate"`
 
@@ -268,6 +271,16 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 	if cfg.RandomEnable == nil {
 		cfg.RandomEnable = newBool(false)
+	}
+
+	// Validate RTU mode configuration
+	if cfg.Mode == "rtu" {
+		if cfg.Serial == nil {
+			return nil, fmt.Errorf("serial configuration is required for RTU mode")
+		}
+		if cfg.Serial.Address == "" && cfg.ListenAddr == "" {
+			return nil, fmt.Errorf("serial.address (e.g., /dev/ttyAMA3) is required for RTU mode")
+		}
 	}
 
 	return &cfg, nil

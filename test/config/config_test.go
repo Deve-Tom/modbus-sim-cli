@@ -169,3 +169,98 @@ registers:
 		t.Error("Should fail with count=10 and FLOAT64 (not divisible)")
 	}
 }
+
+// TestLoadFromFileRTUWithSerialAddress tests that serial.address is loaded correctly for RTU mode.
+func TestLoadFromFileRTUWithSerialAddress(t *testing.T) {
+	content := `
+mode: rtu
+serial:
+  address: "/dev/ttyAMA3"
+  baud_rate: 19200
+  data_bits: 8
+  stop_bits: 1
+  parity: "none"
+registers:
+  - address: 0
+    count: 10
+    type: UINT16
+`
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "rtu.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err := config.LoadFromFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile failed: %v", err)
+	}
+
+	if cfg.Mode != "rtu" {
+		t.Errorf("cfg.Mode = %q, want %q", cfg.Mode, "rtu")
+	}
+	if cfg.Serial == nil {
+		t.Fatal("cfg.Serial should not be nil for RTU mode")
+	}
+	if cfg.Serial.Address != "/dev/ttyAMA3" {
+		t.Errorf("cfg.Serial.Address = %q, want %q", cfg.Serial.Address, "/dev/ttyAMA3")
+	}
+	if cfg.Serial.BaudRate != 19200 {
+		t.Errorf("cfg.Serial.BaudRate = %d, want %d", cfg.Serial.BaudRate, 19200)
+	}
+}
+
+// TestLoadFromFileRTUMissingSerialAddress tests that RTU mode without serial config fails.
+func TestLoadFromFileRTUMissingSerialAddress(t *testing.T) {
+	content := `
+mode: rtu
+registers:
+  - address: 0
+    count: 10
+    type: UINT16
+`
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "rtu_no_serial.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	_, err := config.LoadFromFile(cfgPath)
+	if err == nil {
+		t.Error("Should fail when RTU mode has no serial configuration")
+	}
+}
+
+// TestLoadFromFileRTUWithListenAddrFallback tests backward compatibility with listen_addr for RTU.
+func TestLoadFromFileRTUWithListenAddrFallback(t *testing.T) {
+	content := `
+mode: rtu
+listen_addr: "/dev/ttyUSB0"
+serial:
+  baud_rate: 9600
+  data_bits: 8
+  stop_bits: 1
+  parity: "none"
+registers:
+  - address: 0
+    count: 10
+    type: UINT16
+`
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "rtu_fallback.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err := config.LoadFromFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile failed: %v", err)
+	}
+
+	if cfg.Serial.Address != "" {
+		t.Errorf("cfg.Serial.Address should be empty when using listen_addr fallback, got %q", cfg.Serial.Address)
+	}
+	if cfg.ListenAddr != "/dev/ttyUSB0" {
+		t.Errorf("cfg.ListenAddr = %q, want %q", cfg.ListenAddr, "/dev/ttyUSB0")
+	}
+}

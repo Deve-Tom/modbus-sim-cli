@@ -236,7 +236,7 @@ mode
 mode: tcp
 
 # TCP 监听地址（例如 ":502" 为标准 Modbus TCP 端口）
-# 对于 RTU 模式，这指定串口（例如 "/dev/ttyUSB0"）
+# 对于 RTU 模式，使用 serial.address 配置串口
 listen_addr: ":502"
 
 # 多寄存器值的字节序
@@ -250,6 +250,7 @@ byte_order: ABCD
 
 # 串口配置（RTU 模式必需，TCP 模式忽略）
 serial:
+  address: "/dev/ttyUSB0"  # 串口设备路径（RTU 模式必需，例如 "/dev/ttyAMA3"、"/dev/ttyUSB0"）
   baud_rate: 9600      # 常用值：9600, 19200, 38400, 57600, 115200
   data_bits: 8         # 通常为 8
   stop_bits: 1         # 1 或 2
