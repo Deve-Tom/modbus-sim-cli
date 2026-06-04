@@ -148,7 +148,7 @@ func (s *Server) startRTU() error {
 		DataBits: cfg.Serial.DataBits,
 		StopBits: cfg.Serial.StopBits,
 		Parity:   getParity(cfg.Serial.Parity),
-		Timeout:  500 * time.Millisecond, // Read timeout to allow graceful shutdown
+		Timeout:  0, // No timeout - mbserver's acceptSerialRequests exits on ErrTimeout, so we must not timeout
 	}
 
 	// Configure RS-485 kernel mode if enabled
