@@ -156,6 +156,35 @@ type SerialConfig struct {
 
 	// Parity is the parity mode: "none", "even", "odd".
 	Parity string `yaml:"parity"`
+
+	// RS485 holds RS-485 specific configuration for half-duplex direction control.
+	RS485 *RS485Config `yaml:"rs485,omitempty"`
+}
+
+// RS485Config configures RS-485 half-duplex direction control via the RTS line.
+// When enabled, the kernel automatically controls RTS for transmit/receive switching.
+type RS485Config struct {
+	// Enabled enables kernel-level RS-485 mode.
+	Enabled bool `yaml:"enabled"`
+
+	// RtsHighDuringSend sets RTS high during data transmission.
+	// This is typically true for RS-485 transceivers that use RTS to enable the driver.
+	RtsHighDuringSend bool `yaml:"rts_high_during_send"`
+
+	// RtsHighAfterSend sets RTS high after data transmission.
+	// Typically false - RTS should go low after sending to enable receive mode.
+	RtsHighAfterSend bool `yaml:"rts_high_after_send"`
+
+	// RxDuringTx enables receiving data while transmitting (full-duplex RS-485).
+	// Typically false for half-duplex RS-485.
+	RxDuringTx bool `yaml:"rx_during_tx"`
+
+	// DelayRtsBeforeSend is the delay between RTS assertion and start of transmission.
+	DelayRtsBeforeSend int `yaml:"delay_rts_before_send_ms"`
+
+	// DelayRtsAfterSend is the delay between end of transmission and RTS de-assertion.
+	// This ensures the last byte is fully transmitted before switching to receive mode.
+	DelayRtsAfterSend int `yaml:"delay_rts_after_send_ms"`
 }
 
 // Config is the top-level configuration structure loaded from YAML.
@@ -165,6 +194,11 @@ type Config struct {
 
 	// ListenAddr is the TCP listen address (e.g., ":502").
 	ListenAddr string `yaml:"listen_addr"`
+
+	// SlaveID is the Modbus slave/device address (1-247). Default is 1.
+	// For RTU mode, this is the station address on the serial bus.
+	// For TCP mode, this is the Unit ID.
+	SlaveID uint8 `yaml:"slave_id"`
 
 	// ByteOrder is the byte order for multi-register values.
 	ByteOrder ByteOrder `yaml:"byte_order"`
@@ -253,6 +287,9 @@ func LoadFromFile(path string) (*Config, error) {
 	if cfg.ListenAddr == "" {
 		cfg.ListenAddr = ":502"
 	}
+	if cfg.SlaveID == 0 {
+		cfg.SlaveID = 1
+	}
 	if cfg.ByteOrder == "" {
 		cfg.ByteOrder = BigEndian
 	}
@@ -283,6 +320,11 @@ func LoadFromFile(path string) (*Config, error) {
 		}
 	}
 
+	// Validate slave ID range
+	if cfg.SlaveID < 1 || cfg.SlaveID > 247 {
+		return nil, fmt.Errorf("slave_id must be between 1 and 247, got %d", cfg.SlaveID)
+	}
+
 	return &cfg, nil
 }
 
@@ -291,6 +333,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Mode:       "tcp",
 		ListenAddr: ":502",
+		SlaveID:    1,
 		ByteOrder:  BigEndian,
 		Serial: &SerialConfig{
 			BaudRate: 9600,

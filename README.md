@@ -35,6 +35,8 @@ Modbus-Sim is a command-line tool that simulates Modbus devices for testing, dev
 - **Structured Logging**: Configurable log formats (console/JSON) with multiple log levels
 - **Colored Output**: Optional colored console output for better readability
 - **Request/Response Logging**: Optional detailed data logging for debugging
+- **RS-485 Support**: Kernel-level RS-485 half-duplex direction control via RTS
+- **Serial Diagnostics**: Built-in `serial-dump` command for debugging RS-485/serial connectivity
 - **Cross-Platform**: Pre-built binaries for Windows, Linux, macOS (including ARM)
 - **Zero Dependencies**: Single binary deployment, no runtime dependencies required
 
@@ -194,6 +196,7 @@ For more complex setups, use a YAML configuration file:
 |---------|-------------|
 | `quick` | Quick start with command-line flags |
 | `run` | Start server with configuration file |
+| `serial-dump` | Dump raw serial port data for debugging |
 | `version` | Display version information |
 
 ### Flags
@@ -210,6 +213,7 @@ For more complex setups, use a YAML configuration file:
 |------|-------|-------------|---------|
 | `--mode` | `-m` | Server mode: `tcp` or `rtu` | `tcp` |
 | `--addr` | `-a` | Listen address (TCP) or serial port (RTU) | `:502` |
+| `--slave-id` | `-s` | Modbus slave/device address (1-247) | `1` |
 | `--byte-order` | `-b` | Byte order: `ABCD`, `DCBA`, `BADC`, `CDAB`, `BDAC` | `ABCD` |
 | `--registers` | `-r` | Number of holding registers to initialize | `100` |
 | `--random` | | Enable random value fluctuation | `false` |
@@ -225,6 +229,19 @@ For more complex setups, use a YAML configuration file:
 |------|-------|-------------|---------|
 | `--config` | `-c` | Path to configuration file | `configs/example.yaml` |
 
+#### Serial-Dump Command Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--port` | `-p` | Serial port device path | `/dev/ttyAMA3` |
+| `--baud` | `-b` | Baud rate | `9600` |
+| `--data-bits` | `-d` | Data bits (7 or 8) | `8` |
+| `--stop-bits` | | Stop bits (1 or 2) | `1` |
+| `--parity` | | Parity: none, even, odd | `none` |
+| `--rts-low` | | Force RTS low (enable RS-485 receive mode) | `true` |
+| `--dtr-low` | | Force DTR low | `false` |
+| `--rs485` | | Enable kernel RS-485 mode (auto RTS control) | `false` |
+
 ## ⚙️ Configuration
 
 ### Configuration File Structure
@@ -238,6 +255,11 @@ mode: tcp
 # TCP listen address (e.g., ":502" for standard Modbus TCP port)
 # For RTU mode, use serial.address instead
 listen_addr: ":502"
+
+# Modbus slave/device address (1-247, default: 1)
+# For RTU mode, this is the station address on the serial bus
+# For TCP mode, this is the Unit ID
+slave_id: 1
 
 # Byte order for multi-register values
 # Supported values:
@@ -255,6 +277,16 @@ serial:
   data_bits: 8         # Typically 8
   stop_bits: 1         # 1 or 2
   parity: "none"       # "none", "odd", or "even"
+
+  # RS-485 half-duplex direction control (optional, for RTU mode)
+  # When enabled, the kernel automatically controls RTS for transmit/receive switching.
+  # rs485:
+  #   enabled: true
+  #   rts_high_during_send: true    # RTS high when transmitting
+  #   rts_high_after_send: false    # RTS low after transmitting (enables receive)
+  #   rx_during_tx: false           # Full-duplex RS-485 (rare)
+  #   delay_rts_before_send_ms: 0   # Delay before transmit (ms)
+  #   delay_rts_after_send_ms: 1    # Delay after transmit before switching to receive (ms)
 
 # Display settings
 color_output: true      # Enable colored console output
@@ -493,6 +525,33 @@ The simulator supports colored console output for better readability. This featu
 ```yaml
 color_output: false  # Disable colored output
 ```
+
+### Serial Port Diagnostics
+
+The `serial-dump` command is a diagnostic tool for debugging RS-485/serial connectivity issues. It opens a serial port with full RTS/DTR control and displays received data in hex format.
+
+#### Basic Usage
+
+```bash
+# Dump serial port data with RTS low (default, enables RS-485 receive mode)
+sudo ./modbus-sim serial-dump -p /dev/ttyAMA3 -b 9600
+
+# Disable RTS control (useful for RS-232 ports)
+sudo ./modbus-sim serial-dump -p /dev/ttyUSB0 --rts-low=false
+
+# Enable kernel RS-485 mode for automatic direction control
+sudo ./modbus-sim serial-dump -p /dev/ttyAMA3 --rs485
+
+# Show modem line status for diagnostics
+sudo ./modbus-sim serial-dump -p /dev/ttyAMA3
+# Output includes: RTS=high/low CTS=high/low DTR=high/low DSR=high/low CD=high/low RI=high/low
+```
+
+#### RS-485 Common Issue
+
+If your RS-485 device can't receive data but works with real hardware, the transceiver may be stuck in transmit mode because **RTS is high by default**. The `serial-dump` command defaults to `--rts-low=true` to force RTS low and enable receive mode.
+
+For production RTU server, use the RS-485 configuration in YAML to let the kernel handle RTS switching automatically.
 
 ### Request/Response Data Logging
 
@@ -737,8 +796,12 @@ modbus-sim-cli/
     ├── simulator/              # Core simulation engine
     │   └── simulator.go        # Simulator orchestration
     │
+    ├── serial/                 # Raw serial port operations (Linux)
+    │   └── port.go             # RTS/DTR control, RS-485 kernel mode
+    │
     └── server/                 # Network server
-        └── server.go           # TCP/RTU server implementation
+        ├── server.go           # TCP/RTU server implementation
+        └── handlers.go         # Request/response logging handlers
 ```
 
 ## 🔍 Troubleshooting
@@ -846,6 +909,43 @@ nc -zv localhost 502
 ```yaml
 log_level: debug
 log_format: console
+```
+
+#### 5. RS-485 Cannot Receive Data (RTU Mode)
+
+**Problem:** Serial port opens successfully but no data is received (timeout errors), while real devices work fine on the same port.
+
+**Root Cause:** RS-485 transceivers use the RTS signal to control transmit/receive direction. When RTS is high (default), the transceiver is in transmit mode and cannot receive data.
+
+**Solution:**
+
+```bash
+# 1. Diagnose: Use serial-dump to check modem line status
+sudo ./modbus-sim serial-dump -p /dev/ttyAMA3 -b 9600
+# Look for "RTS=high" in modem line status output
+
+# 2. Quick fix: serial-dump defaults to --rts-low=true
+sudo ./modbus-sim serial-dump -p /dev/ttyAMA3 -b 9600
+# Should show "RTS set LOW (RS-485 receive mode enabled)"
+
+# 3. For production: Enable RS-485 kernel mode in configuration
+```
+
+```yaml
+# In your YAML configuration:
+serial:
+  address: "/dev/ttyAMA3"
+  baud_rate: 9600
+  data_bits: 8
+  stop_bits: 1
+  parity: "none"
+  rs485:
+    enabled: true
+    rts_high_during_send: true   # RTS high when transmitting
+    rts_high_after_send: false    # RTS low after transmitting
+    rx_during_tx: false
+    delay_rts_before_send_ms: 0
+    delay_rts_after_send_ms: 1   # Delay before switching to receive
 ```
 
 ### Getting Help

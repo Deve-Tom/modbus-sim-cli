@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/goburrow/serial"
 	"github.com/leijux/mbserver"
@@ -39,10 +40,12 @@ func (s *Server) Start() error {
 	// Enable/disable data logging in register manager
 	s.sim.RegisterManager().SetShowData(s.showData)
 
-	// Create server with custom register (use Manager directly)
-	s.srv = mbserver.NewServer(
+	// Create server with custom register and logging function handlers
+	opts := []mbserver.OptionFunc{
 		mbserver.WithRegister(s.sim.RegisterManager()),
-	)
+	}
+	opts = append(opts, s.registerLoggingHandlers()...)
+	s.srv = mbserver.NewServer(opts...)
 
 	// Start random value updates
 	s.sim.StartRandomUpdates()
@@ -115,7 +118,10 @@ func (s *Server) startTCP() error {
 	// Start server
 	go s.srv.Start()
 
-	s.logger.Info().Str("addr", s.sim.Config().ListenAddr).Msg("TCP server started")
+	s.logger.Info().
+		Str("addr", s.sim.Config().ListenAddr).
+		Uint8("slave_id", s.sim.Config().SlaveID).
+		Msg("TCP server started")
 	return nil
 }
 
@@ -142,6 +148,20 @@ func (s *Server) startRTU() error {
 		DataBits: cfg.Serial.DataBits,
 		StopBits: cfg.Serial.StopBits,
 		Parity:   getParity(cfg.Serial.Parity),
+		Timeout:  500 * time.Millisecond, // Read timeout to allow graceful shutdown
+	}
+
+	// Configure RS-485 kernel mode if enabled
+	if cfg.Serial.RS485 != nil && cfg.Serial.RS485.Enabled {
+		serialConfig.RS485 = serial.RS485Config{
+			Enabled:           true,
+			RtsHighDuringSend: cfg.Serial.RS485.RtsHighDuringSend,
+			RtsHighAfterSend:  cfg.Serial.RS485.RtsHighAfterSend,
+			RxDuringTx:        cfg.Serial.RS485.RxDuringTx,
+			DelayRtsBeforeSend: time.Duration(cfg.Serial.RS485.DelayRtsBeforeSend) * time.Millisecond,
+			DelayRtsAfterSend:  time.Duration(cfg.Serial.RS485.DelayRtsAfterSend) * time.Millisecond,
+		}
+		s.logger.Info().Msg("RS-485 kernel mode enabled")
 	}
 
 	if err := s.srv.ListenRTU(serialConfig); err != nil {
@@ -151,17 +171,42 @@ func (s *Server) startRTU() error {
 	// Start server
 	go s.srv.Start()
 
-	s.logger.Info().
-		Str("port", serialAddr).
-		Int("baud", cfg.Serial.BaudRate).
-		Msg("RTU server started")
+	// Log complete serial port configuration for debugging
+	logEvent := s.logger.Info().
+		Str("port", cfg.Serial.Address).
+		Int("baud_rate", cfg.Serial.BaudRate).
+		Int("data_bits", cfg.Serial.DataBits).
+		Int("stop_bits", cfg.Serial.StopBits).
+		Str("parity", cfg.Serial.Parity).
+		Uint8("slave_id", cfg.SlaveID)
+	if cfg.Serial.RS485 != nil && cfg.Serial.RS485.Enabled {
+		logEvent = logEvent.
+			Bool("rs485_enabled", true).
+			Bool("rs485_rts_high_during_send", cfg.Serial.RS485.RtsHighDuringSend).
+			Bool("rs485_rts_high_after_send", cfg.Serial.RS485.RtsHighAfterSend).
+			Int("rs485_delay_rts_after_send_ms", cfg.Serial.RS485.DelayRtsAfterSend)
+	}
+	logEvent.Msg("RTU server started")
 	return nil
 }
 
 // Stop gracefully stops the Modbus server.
+// For RTU mode, it uses a timeout since the serial port Read may block
+// and prevent mbserver.Shutdown() from completing.
 func (s *Server) Stop() error {
 	if s.srv != nil {
-		s.srv.Shutdown()
+		done := make(chan struct{})
+		go func() {
+			s.srv.Shutdown()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			// Shutdown completed normally
+		case <-time.After(3 * time.Second):
+			s.logger.Warn().Msg("server shutdown timed out, forcing exit")
+		}
 	}
 	// Stop random value updates
 	s.sim.StopRandomUpdates()

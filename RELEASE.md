@@ -1,5 +1,75 @@
 # Release Notes
 
+## v0.0.3 (2026-06-04)
+
+### Features
+
+- **RS-485 Half-Duplex Direction Control**: Added kernel-level RS-485 mode support for automatic RTS-based transmit/receive switching:
+  - New `rs485` configuration section under `serial` in YAML
+  - Configurable RTS behavior: `rts_high_during_send`, `rts_high_after_send`, `rx_during_tx`
+  - Configurable timing: `delay_rts_before_send_ms`, `delay_rts_after_send_ms`
+  - Enables proper RS-485 transceiver operation without manual RTS toggling
+
+- **Serial Port Diagnostics Tool**: New `serial-dump` command for debugging RS-485/serial connectivity issues:
+  - Raw hex data dump with byte-by-byte view
+  - RTS/DTR control flags: `--rts-low` (default true), `--dtr-low`
+  - Kernel RS-485 mode flag: `--rs485`
+  - Modem line status display (RTS, CTS, DTR, DSR, CD, RI)
+  - Timeout no longer logs errors (normal idle behavior)
+
+- **Raw Serial Port Package**: New `internal/serial` package for Linux:
+  - Direct `syscall`-based serial port operations
+  - Full RTS/DTR modem line control via `TIOCMGET`/`TIOCMSET` ioctl
+  - RS-485 kernel mode via `TIOCSRS485` ioctl
+  - `select()`-based timeout reads
+  - Modem line status querying and formatting
+
+### Bug Fixes
+
+- **RS-485 Receive Mode**: Fixed critical issue where RS-485 transceivers could not receive data because RTS was left high (transmit mode) by default. The `serial-dump` command now defaults `--rts-low=true` to force RTS low and enable receive mode.
+
+### Command-Line Flags
+
+New flags for the `serial-dump` command:
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--port` / `-p` | Serial port device path | `/dev/ttyAMA3` |
+| `--baud` / `-b` | Baud rate | `9600` |
+| `--data-bits` / `-d` | Data bits | `8` |
+| `--stop-bits` | Stop bits | `1` |
+| `--parity` | Parity: none, even, odd | `none` |
+| `--rts-low` | Force RTS low (RS-485 receive mode) | `true` |
+| `--dtr-low` | Force DTR low | `false` |
+| `--rs485` | Enable kernel RS-485 mode | `false` |
+
+### Configuration Changes
+
+New RS-485 configuration section under `serial`:
+
+```yaml
+serial:
+  address: "/dev/ttyAMA3"
+  baud_rate: 9600
+  data_bits: 8
+  stop_bits: 1
+  parity: "none"
+  rs485:
+    enabled: true
+    rts_high_during_send: true
+    rts_high_after_send: false
+    rx_during_tx: false
+    delay_rts_before_send_ms: 0
+    delay_rts_after_send_ms: 1
+```
+
+### Documentation
+
+- Updated README.md and README_zh.md with serial-dump command, RS-485 configuration, and RS-485 troubleshooting section
+- Updated example configuration file (configs/example.yaml) with RS-485 section
+
+---
+
 ## v0.0.2 (2025-05-26)
 
 ### Features

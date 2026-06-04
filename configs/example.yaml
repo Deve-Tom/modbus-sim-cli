@@ -7,6 +7,11 @@ mode: tcp
 # For RTU mode, this field is ignored; use serial.address instead
 listen_addr: ":502"
 
+# Modbus slave/device address (1-247, default: 1)
+# For RTU mode, this is the station address on the serial bus
+# For TCP mode, this is the Unit ID
+slave_id: 1
+
 # Byte order for multi-register values.
 # Supported values:
 #   ABCD - BigEndian (default)
@@ -24,6 +29,17 @@ serial:
   data_bits: 8
   stop_bits: 1
   parity: "none"
+
+  # RS-485 half-duplex direction control (optional, for RTU mode)
+  # When enabled, the kernel automatically controls RTS for transmit/receive switching.
+  # This is required for most RS-485 transceivers to work correctly.
+  # rs485:
+  #   enabled: true
+  #   rts_high_during_send: true    # RTS high when transmitting
+  #   rts_high_after_send: false    # RTS low after transmitting (enables receive)
+  #   rx_during_tx: false           # Full-duplex RS-485 (rare)
+  #   delay_rts_before_send_ms: 0   # Delay before transmit (ms)
+  #   delay_rts_after_send_ms: 1    # Delay after transmit before switching to receive (ms)
 
 # Display settings
 # color_output: enables colored console output (default: true)

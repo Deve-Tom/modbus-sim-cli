@@ -3,10 +3,12 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -14,6 +16,7 @@ import (
 
 	"modbus-sim/internal/config"
 	"modbus-sim/internal/i18n"
+	ser "modbus-sim/internal/serial"
 	"modbus-sim/internal/server"
 	"modbus-sim/internal/simulator"
 )
@@ -62,6 +65,7 @@ var runCmd = &cobra.Command{
 var (
 	quickMode           string
 	quickAddr           string
+	quickSlaveID        uint8
 	quickByteOrder      string
 	quickRegisters      int
 	quickRandom         bool
@@ -80,6 +84,7 @@ var quickCmd = &cobra.Command{
 		cfg := config.DefaultConfig()
 		cfg.Mode = quickMode
 		cfg.ListenAddr = quickAddr
+		cfg.SlaveID = quickSlaveID
 		cfg.ByteOrder = config.ByteOrder(quickByteOrder)
 		cfg.RandomEnable = &quickRandom
 		cfg.RandomMin = quickRandomMin
@@ -132,6 +137,134 @@ var versionCmd = &cobra.Command{
 	},
 }
 
+// --- serial-dump command ---
+
+var (
+	dumpPort      string
+	dumpBaud      int
+	dumpDataBits  int
+	dumpStopBits  int
+	dumpParity    string
+	dumpRTSLow    bool
+	dumpRS485     bool
+	dumpDTRLow    bool
+)
+
+var serialDumpCmd = &cobra.Command{
+	Use:   "serial-dump",
+	Short: "Dump raw serial port data for debugging",
+	Long:  "Open a serial port and print all received data in hex format. Useful for diagnosing RS-485/serial connectivity issues.\n\nThis tool provides RTS/DTR control and RS-485 kernel mode support to help diagnose\nwhy a serial port may not be receiving data.\n\nCommon RS-485 issue: the transceiver is stuck in transmit mode because RTS is high.\nUse --rts-low to force RTS low and enable receive mode.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Setup console logger
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
+		parity := dumpParity
+
+		// Build RS-485 config if requested
+		var rs485Cfg *ser.RS485Config
+		if dumpRS485 {
+			rs485Cfg = &ser.RS485Config{
+				Enabled:           true,
+				RtsHighDuringSend: true,
+				RtsHighAfterSend:  false,
+				RxDuringTx:        false,
+				DelayRtsAfterSend: 1 * time.Millisecond,
+			}
+		}
+
+		log.Info().
+			Str("port", dumpPort).
+			Int("baud", dumpBaud).
+			Int("data_bits", dumpDataBits).
+			Int("stop_bits", dumpStopBits).
+			Str("parity", parity).
+			Bool("rts_low", dumpRTSLow).
+			Bool("dtr_low", dumpDTRLow).
+			Bool("rs485_kernel", dumpRS485).
+			Msg("Opening serial port for raw data dump...")
+
+		port, err := ser.OpenRawPort(dumpPort, dumpBaud, dumpDataBits, dumpStopBits, parity, rs485Cfg)
+		if err != nil {
+			return fmt.Errorf("failed to open serial port %s: %w", dumpPort, err)
+		}
+		defer port.Close()
+
+		// Show modem line status after opening
+		if lines, err := port.ModemLines(); err == nil {
+			log.Info().Str("modem_lines", ser.FormatModemLines(lines)).Msg("Modem line status after open")
+		}
+
+		// Set RTS low if requested (for RS-485 receive mode)
+		if dumpRTSLow {
+			if err := port.SetRTS(false); err != nil {
+				log.Warn().Err(err).Msg("Failed to set RTS low")
+			} else {
+				log.Info().Msg("RTS set LOW (RS-485 receive mode enabled)")
+			}
+		}
+
+		// Set DTR low if requested
+		if dumpDTRLow {
+			if err := port.SetDTR(false); err != nil {
+				log.Warn().Err(err).Msg("Failed to set DTR low")
+			} else {
+				log.Info().Msg("DTR set LOW")
+			}
+		}
+
+		// Show modem line status after RTS/DTR control
+		if lines, err := port.ModemLines(); err == nil {
+			log.Info().Str("modem_lines", ser.FormatModemLines(lines)).Msg("Modem line status after configuration")
+		}
+
+		log.Info().Msg("Serial port opened. Waiting for data... (Ctrl+C to stop)")
+
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+		totalBytes := 0
+		buf := make([]byte, 512)
+
+		for {
+			select {
+			case <-sigCh:
+				log.Info().Int("total_bytes", totalBytes).Msg("Stopped")
+				return nil
+			default:
+			}
+
+			n, err := port.Read(buf, 1*time.Second)
+			if err != nil {
+				if err == ser.ErrTimeout {
+					// Timeout is normal, just continue
+					continue
+				}
+				log.Error().Err(err).Msg("Read error")
+				continue
+			}
+			if n > 0 {
+				totalBytes += n
+				data := buf[:n]
+				log.Info().
+					Int("bytes", n).
+					Int("total", totalBytes).
+					Str("hex", hex.EncodeToString(data)).
+					Msg("received")
+
+				// Also print a formatted byte-by-byte view for easier analysis
+				fmt.Printf("  Raw bytes: ")
+				for i, b := range data {
+					if i > 0 {
+						fmt.Printf(" ")
+					}
+					fmt.Printf("0x%02X", b)
+				}
+				fmt.Println()
+			}
+		}
+	},
+}
+
 // init registers all CLI commands and flags.
 func init() {
 	// root command flags
@@ -144,6 +277,7 @@ func init() {
 	// quick command flags
 	quickCmd.Flags().StringVarP(&quickMode, "mode", "m", "tcp", "Server mode: tcp or rtu")
 	quickCmd.Flags().StringVarP(&quickAddr, "addr", "a", ":502", "Listen address (TCP) or serial port (RTU)")
+	quickCmd.Flags().Uint8VarP(&quickSlaveID, "slave-id", "s", 1, "Modbus slave/device address (1-247)")
 	quickCmd.Flags().StringVarP(&quickByteOrder, "byte-order", "b", "ABCD", "Byte order: ABCD, DCBA, BADC, CDAB, BDAC")
 	quickCmd.Flags().IntVarP(&quickRegisters, "registers", "r", 100, "Number of holding registers to initialize")
 	quickCmd.Flags().BoolVarP(&quickRandom, "random", "", false, "Enable random value fluctuation")
@@ -157,6 +291,17 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(quickCmd)
 	rootCmd.AddCommand(versionCmd)
+
+	// serial-dump command flags
+	serialDumpCmd.Flags().StringVarP(&dumpPort, "port", "p", "/dev/ttyAMA3", "Serial port device path")
+	serialDumpCmd.Flags().IntVarP(&dumpBaud, "baud", "b", 9600, "Baud rate")
+	serialDumpCmd.Flags().IntVarP(&dumpDataBits, "data-bits", "d", 8, "Data bits (7 or 8)")
+	serialDumpCmd.Flags().IntVarP(&dumpStopBits, "stop-bits", "", 1, "Stop bits (1 or 2)")
+	serialDumpCmd.Flags().StringVarP(&dumpParity, "parity", "", "none", "Parity: none, even, odd")
+	serialDumpCmd.Flags().BoolVar(&dumpRTSLow, "rts-low", true, "Force RTS low (enable RS-485 receive mode)")
+	serialDumpCmd.Flags().BoolVar(&dumpDTRLow, "dtr-low", false, "Force DTR low")
+	serialDumpCmd.Flags().BoolVar(&dumpRS485, "rs485", false, "Enable kernel RS-485 mode (auto RTS control)")
+	rootCmd.AddCommand(serialDumpCmd)
 }
 
 // updateCommandDescriptions updates command descriptions with i18n translations.

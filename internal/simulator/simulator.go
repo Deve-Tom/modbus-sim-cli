@@ -159,6 +159,6 @@ func (s *Simulator) DecodeUint64(buf []byte) uint64 {
 
 // Info returns a summary of the simulator state.
 func (s *Simulator) Info() string {
-	return fmt.Sprintf("mode=%s addr=%s byte_order=%s registers=%d",
-		s.cfg.Mode, s.cfg.ListenAddr, s.cfg.ByteOrder, s.regManager.Count())
+	return fmt.Sprintf("mode=%s addr=%s slave_id=%d byte_order=%s registers=%d",
+		s.cfg.Mode, s.cfg.ListenAddr, s.cfg.SlaveID, s.cfg.ByteOrder, s.regManager.Count())
 }

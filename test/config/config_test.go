@@ -35,6 +35,9 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.ListenAddr != ":502" {
 		t.Errorf("DefaultConfig.ListenAddr = %q, want %q", cfg.ListenAddr, ":502")
 	}
+	if cfg.SlaveID != 1 {
+		t.Errorf("DefaultConfig.SlaveID = %d, want %d", cfg.SlaveID, 1)
+	}
 	if cfg.ByteOrder != config.BigEndian {
 		t.Errorf("DefaultConfig.ByteOrder = %q, want %q", cfg.ByteOrder, config.BigEndian)
 	}
@@ -262,5 +265,96 @@ registers:
 	}
 	if cfg.ListenAddr != "/dev/ttyUSB0" {
 		t.Errorf("cfg.ListenAddr = %q, want %q", cfg.ListenAddr, "/dev/ttyUSB0")
+	}
+}
+
+// TestLoadFromFileSlaveID tests that slave_id is loaded and validated correctly.
+func TestLoadFromFileSlaveID(t *testing.T) {
+	// Test explicit slave_id
+	content := `
+mode: rtu
+slave_id: 5
+serial:
+  address: "/dev/ttyAMA3"
+  baud_rate: 9600
+registers:
+  - address: 0
+    count: 10
+    type: UINT16
+`
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "slave_id.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err := config.LoadFromFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile failed: %v", err)
+	}
+	if cfg.SlaveID != 5 {
+		t.Errorf("cfg.SlaveID = %d, want %d", cfg.SlaveID, 5)
+	}
+
+	// Test default slave_id (not specified)
+	content = `
+mode: tcp
+registers:
+  - address: 0
+    count: 10
+    type: UINT16
+`
+	cfgPath = filepath.Join(tmpDir, "default_slave_id.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err = config.LoadFromFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile failed: %v", err)
+	}
+	if cfg.SlaveID != 1 {
+		t.Errorf("cfg.SlaveID = %d, want default %d", cfg.SlaveID, 1)
+	}
+
+	// Test slave_id=0 (treated as not set, defaults to 1)
+	content = `
+mode: tcp
+slave_id: 0
+registers:
+  - address: 0
+    count: 10
+    type: UINT16
+`
+	cfgPath = filepath.Join(tmpDir, "zero_slave_id.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err = config.LoadFromFile(cfgPath)
+	if err != nil {
+		t.Fatalf("LoadFromFile should not fail with slave_id=0 (treated as default): %v", err)
+	}
+	if cfg.SlaveID != 1 {
+		t.Errorf("cfg.SlaveID = %d, want default %d when 0 is specified", cfg.SlaveID, 1)
+	}
+
+	// Test invalid slave_id (248)
+	content = `
+mode: tcp
+slave_id: 248
+registers:
+  - address: 0
+    count: 10
+    type: UINT16
+`
+	cfgPath = filepath.Join(tmpDir, "invalid_slave_id_248.yaml")
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	_, err = config.LoadFromFile(cfgPath)
+	if err == nil {
+		t.Error("Should fail with slave_id=248")
 	}
 }
