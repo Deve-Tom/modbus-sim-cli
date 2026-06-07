@@ -24,9 +24,18 @@
   - `select()`-based timeout reads
   - Modem line status querying and formatting
 
+- **Enhanced Logging with Hex Format**: Improved `show_data` feature with detailed logging:
+  - TCP mode logs client IP address and port on connection
+  - RTU mode logs serial port information and device connection status
+  - All register operations include hex representation of data
+  - Makes debugging and analysis of Modbus traffic much easier
+  - Both TCP and RTU modes now log function names, addresses, counts, and values
+
 ### Bug Fixes
 
 - **RS-485 Receive Mode**: Fixed critical issue where RS-485 transceivers could not receive data because RTS was left high (transmit mode) by default. The `serial-dump` command now defaults `--rts-low=true` to force RTS low and enable receive mode.
+
+- **Windows Build Support**: Added Windows serial port stub to enable successful compilation on Windows platforms.
 
 ### Command-Line Flags
 

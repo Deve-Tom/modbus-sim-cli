@@ -280,15 +280,18 @@ func (m *Manager) ReadCoils(start, count int) ([]bool, mbserver.Exception) {
 	m.mu.RLock()
 	values, ex := m.memReg.ReadCoils(start, count)
 	m.mu.RUnlock()
-
+	
 	if m.showData {
+		// Build hex representation of values
+		hexData := buildBoolHex(values)
 		m.logger.Debug().
 			Int("start", start).
 			Int("count", count).
 			Bools("values", values).
+			Str("hex", hexData).
 			Msg("ReadCoils")
 	}
-
+	
 	return values, ex
 }
 
@@ -297,15 +300,17 @@ func (m *Manager) ReadDiscreteInputs(start, count int) ([]bool, mbserver.Excepti
 	m.mu.RLock()
 	values, ex := m.memReg.ReadDiscreteInputs(start, count)
 	m.mu.RUnlock()
-
+	
 	if m.showData {
+		hexData := buildBoolHex(values)
 		m.logger.Debug().
 			Int("start", start).
 			Int("count", count).
 			Bools("values", values).
+			Str("hex", hexData).
 			Msg("ReadDiscreteInputs")
 	}
-
+	
 	return values, ex
 }
 
@@ -314,15 +319,17 @@ func (m *Manager) ReadHoldingRegisters(start, count int) ([]uint16, mbserver.Exc
 	m.mu.RLock()
 	values, ex := m.memReg.ReadHoldingRegisters(start, count)
 	m.mu.RUnlock()
-
+	
 	if m.showData {
+		hexData := buildUint16Hex(values)
 		m.logger.Debug().
 			Int("start", start).
 			Int("count", count).
 			Uints16("values", values).
+			Str("hex", hexData).
 			Msg("ReadHoldingRegisters")
 	}
-
+	
 	return values, ex
 }
 
@@ -331,15 +338,17 @@ func (m *Manager) ReadInputRegisters(start, count int) ([]uint16, mbserver.Excep
 	m.mu.RLock()
 	values, ex := m.memReg.ReadInputRegisters(start, count)
 	m.mu.RUnlock()
-
+	
 	if m.showData {
+		hexData := buildUint16Hex(values)
 		m.logger.Debug().
 			Int("start", start).
 			Int("count", count).
 			Uints16("values", values).
+			Str("hex", hexData).
 			Msg("ReadInputRegisters")
 	}
-
+	
 	return values, ex
 }
 
@@ -348,14 +357,19 @@ func (m *Manager) WriteSingleCoil(start int, value bool) mbserver.Exception {
 	m.mu.Lock()
 	ex := m.memReg.WriteSingleCoil(start, value)
 	m.mu.Unlock()
-
+	
 	if m.showData {
+		hexValue := "00"
+		if value {
+			hexValue = "ff00"
+		}
 		m.logger.Debug().
 			Int("start", start).
 			Bool("value", value).
+			Str("hex", fmt.Sprintf("%.4x", start)+hexValue).
 			Msg("WriteSingleCoil")
 	}
-
+	
 	return ex
 }
 
@@ -364,14 +378,15 @@ func (m *Manager) WriteSingleRegister(start int, value uint16) mbserver.Exceptio
 	m.mu.Lock()
 	ex := m.memReg.WriteSingleRegister(start, value)
 	m.mu.Unlock()
-
+	
 	if m.showData {
 		m.logger.Debug().
 			Int("start", start).
 			Uint16("value", value).
+			Str("hex", fmt.Sprintf("%.4x%.4x", start, value)).
 			Msg("WriteSingleRegister")
 	}
-
+	
 	return ex
 }
 
@@ -380,15 +395,17 @@ func (m *Manager) WriteMultipleCoils(start int, values []bool) mbserver.Exceptio
 	m.mu.Lock()
 	ex := m.memReg.WriteMultipleCoils(start, values)
 	m.mu.Unlock()
-
+	
 	if m.showData {
+		hexData := buildBoolHex(values)
 		m.logger.Debug().
 			Int("start", start).
 			Int("count", len(values)).
 			Bools("values", values).
+			Str("hex", hexData).
 			Msg("WriteMultipleCoils")
 	}
-
+	
 	return ex
 }
 
@@ -397,16 +414,57 @@ func (m *Manager) WriteMultipleRegisters(start int, values []uint16) mbserver.Ex
 	m.mu.Lock()
 	ex := m.memReg.WriteMultipleRegisters(start, values)
 	m.mu.Unlock()
-
+	
 	if m.showData {
+		hexData := buildUint16Hex(values)
 		m.logger.Debug().
 			Int("start", start).
 			Int("count", len(values)).
 			Uints16("values", values).
+			Str("hex", hexData).
 			Msg("WriteMultipleRegisters")
 	}
-
+	
 	return ex
+}
+
+// buildBoolHex converts a bool slice to hex string representation
+func buildBoolHex(values []bool) string {
+	if len(values) == 0 {
+		return ""
+	}
+	
+	// Convert bools to bytes
+	var bytes []byte
+	for i := 0; i < len(values); i += 8 {
+		var byteVal byte
+		for j := 0; j < 8 && i+j < len(values); j++ {
+			if values[i+j] {
+				byteVal |= (1 << j)
+			}
+		}
+		bytes = append(bytes, byteVal)
+	}
+	
+	// Convert to hex string
+	hexStr := fmt.Sprintf("%x", bytes)
+	return hexStr
+}
+
+// buildUint16Hex converts uint16 slice to hex string representation
+func buildUint16Hex(values []uint16) string {
+	if len(values) == 0 {
+		return ""
+	}
+	
+	result := ""
+	for i, v := range values {
+		if i > 0 {
+			result += " "
+		}
+		result += fmt.Sprintf("%.4x", v)
+	}
+	return result
 }
 
 // ==================== End mbserver.Register interface ====================

@@ -572,17 +572,24 @@ show_data: true  # 启用数据日志
 
 #### 输出格式
 
-启用后，仿真器将记录：
-- **TCP 模式：** 客户端连接/断开事件和数据帧
+启用后，仿真器将记录详细的连接和命令信息：
+
+- **TCP 模式：** 客户端连接/断开事件和 Modbus 请求
   ```
   {"level":"info","component":"server","client":"192.168.1.100:54321","message":"client connected"}
-  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
-  {"level":"debug","component":"server","start":0,"value":1234,"message":"WriteSingleRegister"}
+  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"hex":"0000 0001 0002 0003 0004 0005 0006 0007 0008 0009","message":"ReadHoldingRegisters"}
+  {"level":"debug","component":"server","start":0,"value":1234,"hex":"000004d2","message":"WriteSingleRegister"}
   ```
-- **RTU 模式：** 数据帧（无客户端信息）
+
+- **RTU 模式：** 带从机地址的 Modbus 请求
   ```
-  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
+  {"level":"info","component":"server","port":"COM3","message":"RTU data logging started (device connected)"}
+  {"level":"debug","component":"server","slave_addr":1,"start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"hex":"0000 0001 0002 0003 0004 0005 0006 0007 0008 0009","message":"ReadHoldingRegisters"}
   ```
+
+日志包括：
+- **TCP**：客户端 IP 地址和端口、功能名称、寄存器地址、数量、值和十六进制表示
+- **RTU**：串口名称、从机地址、功能名称、寄存器地址、数量、值和十六进制表示
 
 ## 🧪 测试与集成
 

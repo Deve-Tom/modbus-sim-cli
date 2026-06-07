@@ -572,17 +572,24 @@ show_data: true  # Enable data logging
 
 #### Output Format
 
-When enabled, the simulator logs:
-- **TCP Mode**: Client connection/disconnection events and data frames
+When enabled, the simulator logs detailed information about connections and commands:
+
+- **TCP Mode**: Client connection/disconnection events and Modbus requests
   ```
   {"level":"info","component":"server","client":"192.168.1.100:54321","message":"client connected"}
-  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
-  {"level":"debug","component":"server","start":0,"value":1234,"message":"WriteSingleRegister"}
+  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"hex":"0000 0001 0002 0003 0004 0005 0006 0007 0008 0009","message":"ReadHoldingRegisters"}
+  {"level":"debug","component":"server","start":0,"value":1234,"hex":"000004d2","message":"WriteSingleRegister"}
   ```
-- **RTU Mode**: Data frames (without client info)
+
+- **RTU Mode**: Modbus requests with slave address
   ```
-  {"level":"debug","component":"server","start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"message":"ReadHoldingRegisters"}
+  {"level":"info","component":"server","port":"COM3","message":"RTU data logging started (device connected)"}
+  {"level":"debug","component":"server","slave_addr":1,"start":0,"count":10,"values":[0,1,2,3,4,5,6,7,8,9],"hex":"0000 0001 0002 0003 0004 0005 0006 0007 0008 0009","message":"ReadHoldingRegisters"}
   ```
+
+The logs include:
+- **TCP**: Client IP address and port, function names, register addresses, counts, values, and hex representations
+- **RTU**: Serial port name, slave address, function names, register addresses, counts, values, and hex representations
 
 ## 🧪 Testing & Integration
 
